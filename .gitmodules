@@ -1,0 +1,4 @@
+# Example:
+# [submodule "deps/[dep_name]"]
+#     path = deps/[dep_name]
+#     url = https://github.com/[author]/[dep_name]

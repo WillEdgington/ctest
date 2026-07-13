@@ -1,0 +1,18 @@
+# Build Artefacts
+*.o
+*.d
+*.a
+
+# Compiled ctest binary
+ctest
+!ctest/
+
+# Dependency/Environment folders
+venv/
+deps/
+
+# Compiled test binaries
+tests/*
+!tests/*/
+!tests/*.c
+!tests/*.h

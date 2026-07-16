@@ -13,6 +13,5 @@ deps/
 
 # Compiled test binaries
 tests/*
-!tests/*/
 !tests/*.c
 !tests/*.h

@@ -18,16 +18,16 @@ DEP_LIBS := $(foreach name,$(DEP_NAMES),deps/$(name)/lib$(name).a)
 BIN = ctest
 LIB_A = libctest.a
 
-# Separate CLI entry point from core shared library engine
-CLI_SRC = src/ctest_cli.c
-LIB_SRC = src/libctest.c
+LIB_SRC := $(wildcard src/libctest/*.c)
+LIB_OBJ := $(LIB_SRC:.c=.o)
 
-CLI_OBJ = $(CLI_SRC:.c=.o)
-LIB_OBJ = $(LIB_SRC:.c=.o)
+CLI_SRC := $(wildcard src/ctest_cli/*.c)
+CLI_OBJ := $(CLI_SRC:.c=.o)
+
 ALL_OBJ = $(CLI_OBJ) $(LIB_OBJ)
 
-TEST_SRC = $(wildcard tests/test_*.c)
-TEST_BIN = $(TEST_SRC:.c=)
+TEST_SRC := $(wildcard tests/libctest/*.c) $(wildcard tests/ctest_cli/*.c)
+TEST_BIN := $(TEST_SRC:.c=)
 
 DEPS = $(ALL_OBJ:.o=.d) $(TEST_SRC:.c=.d)
 
@@ -50,7 +50,7 @@ $(LIB_A): $(LIB_OBJ)
 $(DEP_LIBS):
 		$(MAKE) -C $(@D)
 
-src/%.o: src/%.c
+%.o: %.c
 		$(CC) $(CFLAGS) -c -o $@ $<
 
 setup_deps:
@@ -70,7 +70,7 @@ tests/%: tests/%.c $(LIB_OBJ) $(DEP_LIBS)
 -include $(DEPS)
 
 clean:
-		rm -f src/*.o tests/test_* $(BIN) $(LIB_A) $(DEPS)
+		rm -f $(ALL_OBJ) $(TEST_BIN) $(DEPS) $(BIN) $(LIB_A)
 
 clean_deps: clean
 		@for dir in $(DEP_DIRS); do $(MAKE) -C $$dir clean; done

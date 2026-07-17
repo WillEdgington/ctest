@@ -63,9 +63,20 @@ test: $(BIN) $(TEST_BIN)
 		@echo "Executing framework test suite..."
 		./$(BIN) tests/
 
-# Test code binaries are linked cleanly against core engine objects
-tests/%: tests/%.c $(LIB_OBJ) $(DEP_LIBS)
+# List of cli helpers, exclude the ctest_cli main entry point
+CLI_HELPERS := $(filter-out src/ctest_cli/ctest_cli.o, $(CLI_OBJ))
+
+# Apply the private source include directory to all test targets
+tests/libctest/%: CFLAGS += -Isrc
+tests/ctest_cli/%: CFLAGS += -Isrc
+
+# Only link runtime library to library test suite
+tests/libctest/%: tests/libctest/%.c $(LIB_OBJ) $(DEP_LIBS)
 		$(CC) $(CFLAGS) $< $(LIB_OBJ) $(LDFLAGS) -o $@
+
+# Expose ctest_cli helpers to ctest_cli test suite
+tests/ctest_cli/%: tests/ctest_cli/%.c $(LIB_OBJ) $(CLI_HELPERS) $(DEP_LIBS)
+		$(CC) $(CFLAGS) $< $(LIB_OBJ) $(CLI_HELPERS) $(LDFLAGS) -o $@
 
 -include $(DEPS)
 

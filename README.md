@@ -23,7 +23,7 @@ make debug      # Builds with debug symbols and sanitisers
 **clean:**
 ```bash
 make clean_deps # Cleans compiled binaries, .o, .a, and .d files (including compiled dependencies)
-make clean      # Cleans compiled binaries, .o, and .d files (just for cshell)
+make clean      # Cleans compiled binaries, .o, and .d files (just for ctest)
 ```
 
 ---

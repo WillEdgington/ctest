@@ -12,6 +12,6 @@ venv/
 deps/
 
 # Compiled test binaries
-tests/*
-!tests/*.c
-!tests/*.h
+tests/**/test_*
+!tests/**/*.c
+!tests/**/*.h

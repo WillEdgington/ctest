@@ -30,15 +30,16 @@ void setup_mock_test_suite(void) {
 }
 
 void teardown_mock_test_suite(void) {
-  ctest_teardown_mock_dir(mock_root);
   ctest_teardown_mock_file(mock_c);
   ctest_teardown_mock_file(mock_d);
   ctest_teardown_mock_file(mock_o);
   ctest_teardown_mock_file(mock_test_f);
   ctest_teardown_mock_file(mock_misc_f);
 
-  ctest_teardown_mock_dir(nested_dir);
   ctest_teardown_mock_file(nested_test_f);
+
+  ctest_teardown_mock_dir(nested_dir);
+  ctest_teardown_mock_dir(mock_root);
 }
 
 void test_discovery_nested_traversal(void) {

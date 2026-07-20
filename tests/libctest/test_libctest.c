@@ -1,3 +1,4 @@
+#define _GNU_SOURCE
 #include <ctest/ctest.h>
 #include <stdio.h>
 #include <stdlib.h>
@@ -48,6 +49,49 @@ void test_environment_fixtures(void) {
     fclose(f_cleanup);
 }
 
+void test_mock_binary_fixtures(void) {
+  const char *mock_bin = "./sandbox_mock_bin_90123847";
+
+  int setup_res = ctest_setup_mock_binary(mock_bin, "#include <stdio.h>\n"
+                                                    "int main(void) {\n"
+                                                    "    return 42;\n"
+                                                    "}\n");
+
+  ASSERT_INT_EQ(setup_res, 0,
+                "Mock binary setup returns 0 on successful compile");
+
+  struct stat st;
+  int stat_res = stat(mock_bin, &st);
+  ASSERT_INT_EQ(stat_res, 0, "Mock binary executable exists on disk");
+  ASSERT(S_ISREG(st.st_mode), "Mock binary is a regular file");
+  ASSERT((st.st_mode & S_IXUSR) != 0,
+         "Mock binary has user execute permissions");
+
+  int exit_status = system(mock_bin);
+  ASSERT_INT_EQ(WEXITSTATUS(exit_status), 42,
+                "Mock binary executes and returns expected status");
+
+  ctest_teardown_mock_binary(mock_bin);
+
+  stat_res = stat(mock_bin, &st);
+  ASSERT_INT_EQ(stat_res, -1, "Mock binary removed after teardown");
+
+  char src_path[256];
+  snprintf(src_path, sizeof(src_path), "%s.c", mock_bin);
+  stat_res = stat(src_path, &st);
+  ASSERT_INT_EQ(stat_res, -1, "Mock source (.c) file removed after teardown");
+
+  int stderr = ctest_mute_output(STDERR_FILENO);
+  int failed_setup =
+      ctest_setup_mock_binary(mock_bin, "invalid c syntax code {");
+  ASSERT_INT_EQ(failed_setup, -1,
+                "Mock binary setup returns -1 on compilation failure");
+  ctest_unmute_output(stderr, STDERR_FILENO);
+
+  stat_res = stat(src_path, &st);
+  ASSERT_INT_EQ(stat_res, -1, "Failed setup cleans up temp .c source file");
+}
+
 void test_output_muting(void) {
   int saved_stdout = ctest_mute_output(STDOUT_FILENO);
   ASSERT(saved_stdout >= 0,
@@ -65,6 +109,7 @@ int main(void) {
   test_basic_assertions();
   test_environment_fixtures();
   test_output_muting();
+  test_mock_binary_fixtures();
 
   ctest_summary();
   return ctest_fail_count == 0 ? 0 : 1;

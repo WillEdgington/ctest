@@ -5,9 +5,12 @@
 #define CUSTOM_MSG_BUFFER_SIZE 512
 #define MKDIR_MODE_FLAGS                                                       \
   S_IRWXU | S_IRWXG | S_IRWXO // read/write/execute by owner/group/others
+#define BINARY_F_MODE_FLAGS 0755
 
 int ctest_run_count = 0;
 int ctest_fail_count = 0;
+
+static int max_path_len = 256;
 
 void ctest_report_failure(const char *file, int line, const char *expr,
                           const char *msg, ...) {
@@ -75,13 +78,43 @@ void ctest_setup_mock_dir(const char *path) { mkdir(path, MKDIR_MODE_FLAGS); }
 
 void ctest_teardown_mock_dir(const char *path) { rmdir(path); }
 
-void ctest_setup_mock_file(const char *path, const char *content) {
+int ctest_setup_mock_file(const char *path, const char *content) {
   FILE *f = fopen(path, "w");
-  if (f != NULL) {
-    if (content != NULL)
-      fprintf(f, "%s", content);
-    fclose(f);
-  }
+  if (f == NULL)
+    return -1;
+
+  if (content != NULL)
+    fprintf(f, "%s", content);
+  fclose(f);
+  return 0;
 }
 
 void ctest_teardown_mock_file(const char *path) { unlink(path); }
+
+int ctest_setup_mock_binary(const char *path, const char *c_code) {
+  char src_path[max_path_len];
+  snprintf(src_path, max_path_len, "%s.c", path);
+
+  FILE *f = fopen(src_path, "w");
+  if (f == NULL)
+    return -1;
+
+  fputs(c_code, f);
+  fclose(f);
+
+  char cmd[max_path_len << 1];
+  snprintf(cmd, sizeof(cmd), "gcc -o %s %s", path, src_path);
+  if (system(cmd) != 0) {
+    unlink(src_path);
+    return -1;
+  }
+  chmod(path, BINARY_F_MODE_FLAGS);
+  return 0;
+}
+
+void ctest_teardown_mock_binary(const char *path) {
+  char src_path[max_path_len];
+  snprintf(src_path, max_path_len, "%s.c", path);
+  unlink(src_path);
+  unlink(path);
+}

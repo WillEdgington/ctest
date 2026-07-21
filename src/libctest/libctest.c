@@ -12,6 +12,9 @@ int ctest_fail_count = 0;
 
 static int max_path_len = 256;
 
+static int ctest_capture_pipefds[2] = {-1, -1};
+static int ctest_capture_saved_stdout = -1;
+
 void ctest_report_failure(const char *file, int line, const char *expr,
                           const char *msg, ...) {
   char custom_msg[CUSTOM_MSG_BUFFER_SIZE] = {0};
@@ -117,4 +120,54 @@ void ctest_teardown_mock_binary(const char *path) {
   snprintf(src_path, max_path_len, "%s.c", path);
   unlink(src_path);
   unlink(path);
+}
+
+int ctest_capture_stdout_start(void) {
+  fflush(stdout);
+
+  if (pipe(ctest_capture_pipefds) == -1)
+    return -1;
+
+  ctest_capture_saved_stdout = dup(STDOUT_FILENO);
+  if (ctest_capture_saved_stdout == -1) {
+    close(ctest_capture_pipefds[0]);
+    close(ctest_capture_pipefds[1]);
+    return -1;
+  }
+
+  if (dup2(ctest_capture_pipefds[1], STDOUT_FILENO) == -1) {
+    close(ctest_capture_saved_stdout);
+    close(ctest_capture_pipefds[0]);
+    close(ctest_capture_pipefds[1]);
+    ctest_capture_saved_stdout = -1;
+    return -1;
+  }
+
+  close(ctest_capture_pipefds[1]);
+  return 0;
+}
+
+ssize_t ctest_capture_stdout_end(char *buf, size_t buf_size) {
+  if (ctest_capture_saved_stdout == -1)
+    return -1;
+
+  fflush(stdout);
+
+  dup2(ctest_capture_saved_stdout, STDOUT_FILENO);
+  close(ctest_capture_saved_stdout);
+  ctest_capture_saved_stdout = -1;
+
+  if (buf == NULL || buf_size == 0) {
+    close(ctest_capture_pipefds[0]);
+    return 0;
+  }
+
+  memset(buf, 0, buf_size);
+  ssize_t bytes_read = read(ctest_capture_pipefds[0], buf, buf_size - 1);
+  if (bytes_read < 0)
+    bytes_read = 0;
+
+  buf[bytes_read] = '\0';
+  close(ctest_capture_pipefds[0]);
+  return bytes_read;
 }

@@ -27,13 +27,14 @@ void ctest_report_failure(const char *file, int line, const char *expr,
   const char *runner_active = getenv("CTEST_RUNNER");
 
   if (runner_active && strcmp(runner_active, "1") == 0) {
-    fprintf(stdout, "FAIL|%s|%d|%s|%s\n", file, line, expr, custom_msg);
+    fprintf(stdout, CTEST_COLOR_RED "FAIL|%s|%d|%s|%s" CTEST_COLOR_RESET "\n",
+            file, line, expr, custom_msg);
     fflush(stdout);
   } else {
-    fprintf(stderr, "%s  [FAIL] %s" CTEST_COLOR_RESET "\n", CTEST_COLOR_RED,
+    fprintf(stderr, "\n  " CTEST_COLOR_RED "[FAIL] %s" CTEST_COLOR_RESET "\n",
             custom_msg);
     fprintf(stderr, "         Expression: %s\n", expr);
-    fprintf(stderr, "         Location  : Line %d in %s\n\n", line, file);
+    fprintf(stderr, "         Location  : Line %d in %s\n", line, file);
   }
 }
 

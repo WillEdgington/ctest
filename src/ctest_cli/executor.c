@@ -1,6 +1,7 @@
 #define _GNU_SOURCE
 #include "executor.h"
 #include <clib/vector.h>
+#include <ctest/ctest.h>
 #include <stdio.h>
 #include <stdlib.h>
 #include <string.h>
@@ -67,8 +68,9 @@ SuiteMetrics ctest_execute_suite(const char *binary_path,
 
       char crash_msg[CTEST_MAX_LINE_LEN];
       snprintf(crash_msg, CTEST_MAX_LINE_LEN,
-               "CRASH|%s|Terminated by signal %d\n", binary_path,
-               WTERMSIG(status));
+               CTEST_COLOR_YELLOW
+               "CRASH|%s|Terminated by signal %d" CTEST_COLOR_RESET "\n",
+               binary_path, WTERMSIG(status));
       if (vector_push(failure_ledger, crash_msg) == -1) {
         fprintf(stderr, "ctest: failed to push to the failure ledger\n");
       }

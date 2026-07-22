@@ -109,5 +109,7 @@ int ctest_setup_mock_file(const char *path, const char *content);
 void ctest_teardown_mock_file(const char *path);
 int ctest_setup_mock_binary(const char *path, const char *c_code);
 void ctest_teardown_mock_binary(const char *path);
+int ctest_capture_stdout_start(void);
+ssize_t ctest_capture_stdout_end(char *buf, size_t buf_size);
 
 #endif

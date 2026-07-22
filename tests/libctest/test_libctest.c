@@ -103,6 +103,20 @@ void test_output_muting(void) {
   printf("  [INFO] Terminal output unmuted successfully.");
 }
 
+void test_stdout_capturing(void) {
+  char buf[128];
+
+  int start_res = ctest_capture_stdout_start();
+  ASSERT_INT_EQ(start_res, 0, "Stdout capture setup succeeds");
+
+  printf("CAPTURE_TEST_PAYLOAD");
+
+  ssize_t bytes = ctest_capture_stdout_end(buf, sizeof(buf));
+  ASSERT(bytes > 0, "Captured bytes should be greater than zero");
+  ASSERT_STR_EQ(buf, "CAPTURE_TEST_PAYLOAD",
+                "Captured string matches stdout output");
+}
+
 int main(void) {
   printf("\nRunning: %s...", __FILE__);
 

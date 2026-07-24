@@ -6,8 +6,8 @@
 #define CTEST_MAX_LINE_LEN 512
 
 typedef struct {
-  int total_runs;
-  int total_failures;
+  size_t total_runs;
+  size_t total_failures;
   int crashed;
 } SuiteMetrics;
 

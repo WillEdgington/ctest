@@ -3,6 +3,7 @@
 #include <ctest/ctest.h>
 
 #define CAPTURE_BUF_SIZE 2048
+#define LEDGER_ITEM_SIZE 256
 
 static void test_report_suite_metrics_pass(void) {
   const char *bin_path = "tests/fake_passing_test";
@@ -57,15 +58,22 @@ static void test_report_suite_metrics(void) {
 
 static void test_report_ledger(void) {
   Vector ledger;
-  vector_init(&ledger, sizeof(char *));
+  vector_init(&ledger, LEDGER_ITEM_SIZE);
 
-  const char *entry_1 = CTEST_COLOR_RED
-      "FAIL|tests/test_a.c|42|x == y|Expected 5, got 3" CTEST_COLOR_RESET "\n";
-  const char *entry_2 = CTEST_COLOR_YELLOW
-      "CRASH|tests/test_b.c|Terminated by signal 11" CTEST_COLOR_RESET "\n";
+  char entry_1[LEDGER_ITEM_SIZE] = {0};
+  char entry_2[LEDGER_ITEM_SIZE] = {0};
 
-  vector_push(&ledger, &entry_1);
-  vector_push(&ledger, &entry_2);
+  snprintf(entry_1, sizeof(entry_1),
+           CTEST_COLOR_RED
+           "FAIL|tests/test_a.c|42|x == y|Expected 5, got 3" CTEST_COLOR_RESET
+           "\n");
+  snprintf(entry_2, sizeof(entry_2),
+           CTEST_COLOR_YELLOW
+           "CRASH|tests/test_b.c|Terminated by signal 11" CTEST_COLOR_RESET
+           "\n");
+
+  vector_push(&ledger, entry_1);
+  vector_push(&ledger, entry_2);
 
   char out_buf[CAPTURE_BUF_SIZE];
   ctest_capture_stdout_start();

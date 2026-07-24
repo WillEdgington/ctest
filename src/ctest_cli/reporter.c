@@ -127,7 +127,7 @@ void ctest_report_ledger(const Vector *ledger) {
 
   Iter it = vector_iter((Vector *)ledger);
   while (it.next(&it) == 0) {
-    printf("\n%s", *(char **)it.current.value);
+    printf("\n%s", (char *)it.current.value);
   }
   printf("\n");
   /*
@@ -150,15 +150,15 @@ void ctest_report_summary(const SessionMetrics *session) {
   char buffer[buffer_len];
   if (session->total_failures == 0 && session->total_crashes == 0) {
     snprintf(buffer, sizeof(buffer),
-             CTEST_COLOR_GREEN "ALL " CTEST_COLOR_RESET "%ld" CTEST_COLOR_GREEN
+             CTEST_COLOR_GREEN "ALL " CTEST_COLOR_RESET "%zu" CTEST_COLOR_GREEN
                                " SUITES PASSED" CTEST_COLOR_RESET,
              suites);
   } else {
     snprintf(buffer, sizeof(buffer),
-             "SUITES: %ld  TESTS: %ld  PASSED: " CTEST_COLOR_GREEN
-             "%ld" CTEST_COLOR_RESET "  FAILED: " CTEST_COLOR_RED
-             "%ld" CTEST_COLOR_RESET "  CRASHED: " CTEST_COLOR_YELLOW
-             "%ld" CTEST_COLOR_RESET,
+             "SUITES: %zu  TESTS: %zu  PASSED: " CTEST_COLOR_GREEN
+             "%zu" CTEST_COLOR_RESET "  FAILED: " CTEST_COLOR_RED
+             "%zu" CTEST_COLOR_RESET "  CRASHED: " CTEST_COLOR_YELLOW
+             "%zu" CTEST_COLOR_RESET,
              suites, tests, passed, failed, crashed);
   }
 

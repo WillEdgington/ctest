@@ -7,10 +7,10 @@
 #include <sys/stat.h>
 #include <sys/types.h>
 
-int traverse_directory(const char *dir, Vector *v) {
+static int traverse_directory(const char *dir, Vector *v) {
   DIR *dir_stream = opendir(dir);
   if (dir_stream == NULL)
-    return 0;
+    return -1;
 
   struct dirent *entry;
   struct stat statbuf;

@@ -52,8 +52,10 @@ SuiteMetrics ctest_execute_suite(const char *binary_path,
             fprintf(stderr, "ctest: failed to push to the failure ledger\n");
           }
         } else if (strncmp(line, "SUMMARY|", 8) == 0) {
-          sscanf(line, "SUMMARY|%d|%d", &metrics.total_runs,
-                 &metrics.total_failures);
+          int runs, fails;
+          sscanf(line, "SUMMARY|%d|%d", &runs, &fails);
+          metrics.total_runs = (size_t)runs;
+          metrics.total_failures = (size_t)fails;
         }
       }
       fclose(stream);

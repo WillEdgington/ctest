@@ -47,15 +47,19 @@ SuiteMetrics ctest_execute_suite(const char *binary_path,
     if (stream != NULL) {
       char line[CTEST_MAX_LINE_LEN];
       while (fgets(line, sizeof(line), stream) != NULL) {
-        if (strncmp(line, "FAIL|", 5) == 0) {
-          if (vector_push(failure_ledger, line) == -1) {
+        char *fail_ptr = strstr(line, "FAIL|");
+        char *summary_ptr = strstr(line, "SUMMARY|");
+
+        if (fail_ptr != NULL) {
+          if (vector_push(failure_ledger, fail_ptr) == -1) {
             fprintf(stderr, "ctest: failed to push to the failure ledger\n");
           }
-        } else if (strncmp(line, "SUMMARY|", 8) == 0) {
+        } else if (summary_ptr != NULL) {
           int runs, fails;
-          sscanf(line, "SUMMARY|%d|%d", &runs, &fails);
-          metrics.total_runs = (size_t)runs;
-          metrics.total_failures = (size_t)fails;
+          if (sscanf(summary_ptr, "SUMMARY|%d|%d", &runs, &fails) == 2) {
+            metrics.total_runs = (size_t)runs;
+            metrics.total_failures = (size_t)fails;
+          }
         }
       }
       fclose(stream);

@@ -42,7 +42,7 @@ void ctest_summary(void) {
   const char *runner_active = getenv("CTEST_RUNNER");
 
   if (runner_active && strcmp(runner_active, "1") == 0) {
-    fprintf(stdout, "SUMMARY|%d|%d\n", ctest_run_count, ctest_fail_count);
+    fprintf(stdout, "\nSUMMARY|%d|%d\n", ctest_run_count, ctest_fail_count);
     fflush(stdout);
     return;
   }

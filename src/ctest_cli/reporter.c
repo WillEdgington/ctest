@@ -123,6 +123,8 @@ void ctest_report_suite_metrics(const char *binary_path,
 }
 
 void ctest_report_ledger(const Vector *ledger) {
+  if (ledger->count == 0)
+    return;
   print_horiz_marg(CTEST_COLOR_RED " FAILURE REPORT " CTEST_COLOR_RESET);
 
   Iter it = vector_iter((Vector *)ledger);

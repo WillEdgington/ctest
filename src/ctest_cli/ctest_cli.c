@@ -12,7 +12,7 @@ int main(int argc, char *argv[]) {
   if (status != 0)
     return status == -1 ? 2 : 0;
 
-  status = ctest_run_session(config.target_dir);
+  status = ctest_run_session(&config);
 
   if (status == -1) {
     fprintf(stderr, "ctest: error executing test session target '%s'\n",

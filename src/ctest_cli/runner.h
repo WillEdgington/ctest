@@ -3,6 +3,8 @@
 
 #define CTEST_MAX_FAIL_LINE_LEN 256
 
-int ctest_run_session(const char *dir);
+#include "config.h"
+
+int ctest_run_session(const CTestConfig *config);
 
 #endif

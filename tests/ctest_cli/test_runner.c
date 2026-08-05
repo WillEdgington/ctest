@@ -1,3 +1,4 @@
+#include "ctest_cli/config.h"
 #include "ctest_cli/runner.h"
 #include <ctest/ctest.h>
 #include <stdio.h>
@@ -15,9 +16,13 @@ static void test_runner_all_passed(void) {
                                     "    return 0;\n"
                                     "}\n");
 
+  CTestConfig config;
+  ctest_config_init(&config);
+  config.target_dir = test_dir;
+
   char out_buf[CAPTURE_BUF_SIZE];
   ctest_capture_stdout_start();
-  int res = ctest_run_session(test_dir);
+  int res = ctest_run_session(&config);
   ctest_capture_stdout_end(out_buf, sizeof(out_buf));
 
   ASSERT_INT_EQ(res, 0, "Runner should return 0 when all test suites pass");
@@ -39,9 +44,13 @@ static void test_runner_with_failures(void) {
                 "    return 0;\n"
                 "}\n");
 
+  CTestConfig config;
+  ctest_config_init(&config);
+  config.target_dir = test_dir;
+
   char out_buf[CAPTURE_BUF_SIZE];
   ctest_capture_stdout_start();
-  int res = ctest_run_session(test_dir);
+  int res = ctest_run_session(&config);
   ctest_capture_stdout_end(out_buf, sizeof(out_buf));
 
   ASSERT_INT_EQ(res, 1, "Runner should return 1 when test failures occur");
@@ -63,9 +72,13 @@ static void test_runner_with_crash(void) {
                                     "    return 0;\n"
                                     "}\n");
 
+  CTestConfig config;
+  ctest_config_init(&config);
+  config.target_dir = test_dir;
+
   char out_buf[CAPTURE_BUF_SIZE];
   ctest_capture_stdout_start();
-  int res = ctest_run_session(test_dir);
+  int res = ctest_run_session(&config);
   ctest_capture_stdout_end(out_buf, sizeof(out_buf));
 
   ASSERT_INT_EQ(res, 1, "Runner should return 1 when a test suite crashes");
@@ -75,13 +88,64 @@ static void test_runner_with_crash(void) {
 }
 
 static void test_runner_invalid_directory(void) {
+  CTestConfig config;
+  ctest_config_init(&config);
+  config.target_dir = "non_existent_directory_92817344";
+
   char out_buf[CAPTURE_BUF_SIZE];
   ctest_capture_stdout_start();
-  int res = ctest_run_session("non_existent_directory_92817344");
+  int res = ctest_run_session(&config);
   ctest_capture_stdout_end(out_buf, sizeof(out_buf));
 
   ASSERT_INT_EQ(res, -1,
                 "Runner should return -1 on discovery/directory error");
+}
+
+static void test_runner_with_filter(void) {
+  const char *test_dir = "sandbox_runner_filter_dir_55443322";
+  const char *bin_pass =
+      "sandbox_runner_filter_dir_55443322/test_apple_11223344";
+  const char *bin_fail =
+      "sandbox_runner_filter_dir_55443322/test_banana_55667788";
+
+  ctest_setup_mock_dir(test_dir);
+
+  ctest_setup_mock_binary(bin_pass, "#include <stdio.h>\n"
+                                    "int main(void) {\n"
+                                    "    printf(\"SUMMARY|1|0|0\\n\");\n"
+                                    "    return 0;\n"
+                                    "}\n");
+
+  ctest_setup_mock_binary(bin_fail,
+                          "#include <stdio.h>\n"
+                          "int main(void) {\n"
+                          "    printf(\"FAIL|test.c|5|0|Failed\\n\");\n"
+                          "    printf(\"SUMMARY|1|1|0\\n\");\n"
+                          "    return 0;\n"
+                          "}\n");
+
+  CTestConfig config;
+  ctest_config_init(&config);
+  config.target_dir = test_dir;
+  config.filter_pattern = "apple";
+
+  char out_buf[CAPTURE_BUF_SIZE];
+  ctest_capture_stdout_start();
+  int res = ctest_run_session(&config);
+  ctest_capture_stdout_end(out_buf, sizeof(out_buf));
+
+  ASSERT_INT_EQ(
+      res, 0,
+      "Runner should return 0 when failing suite is excluded by filter");
+
+  ASSERT_INT_EQ(strstr(out_buf, "test_apple") != NULL, 1,
+                "Output should contain matched binary 'test_apple'");
+  ASSERT_INT_EQ(strstr(out_buf, "test_banana") == NULL, 1,
+                "Output should not contain filtered binary 'test_banana'");
+
+  ctest_teardown_mock_binary(bin_pass);
+  ctest_teardown_mock_binary(bin_fail);
+  ctest_teardown_mock_dir(test_dir);
 }
 
 int main(void) {
@@ -91,6 +155,7 @@ int main(void) {
   test_runner_with_failures();
   test_runner_with_crash();
   test_runner_invalid_directory();
+  test_runner_with_filter();
 
   ctest_summary();
   return ctest_fail_count == 0 ? 0 : 1;

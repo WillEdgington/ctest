@@ -27,7 +27,7 @@ static void test_executor_passing_suite(void) {
                 "Total runs parsed correctly for passing suite");
   ASSERT_INT_EQ(metrics.total_failures, 0,
                 "Total failures parsed correctly for passing suite");
-  ASSERT_INT_EQ(metrics.crashed, 0, "Passing suite did not crash");
+  ASSERT_INT_EQ(metrics.state, SUITE_DEFAULT, "Passing suite did not crash");
   ASSERT_INT_EQ((int)ledger.count, 0, "Ledger remains empty for passing suite");
 
   vector_free(&ledger);
@@ -52,7 +52,7 @@ static void test_executor_failing_suite(void) {
                 "Total runs parsed correctly for failing suite");
   ASSERT_INT_EQ(metrics.total_failures, 1,
                 "Total failures parsed correctly for failing suite");
-  ASSERT_INT_EQ(metrics.crashed, 0, "Failing suite did not crash");
+  ASSERT_INT_EQ(metrics.state, SUITE_DEFAULT, "Failing suite did not crash");
   ASSERT_INT_EQ((int)ledger.count, 1, "Ledger caught right amount of failures");
 
   char *captured_fail = (char *)vector_get(&ledger, 0);
@@ -77,7 +77,7 @@ static void test_executor_crashing_suite(void) {
 
   SuiteMetrics metrics = ctest_execute_suite(mock_crashing_bin, &ledger);
 
-  ASSERT_INT_EQ(metrics.crashed, 1, "Suite detected crash");
+  ASSERT_INT_EQ(metrics.state, SUITE_CRASH, "Suite detected crash");
   ASSERT_INT_EQ((int)ledger.count, 1, "Ledger caught crash packet");
 
   char *captured_crash = (char *)vector_get(&ledger, 0);

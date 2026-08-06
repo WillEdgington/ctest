@@ -7,7 +7,8 @@
 
 static void test_report_suite_metrics_pass(void) {
   const char *bin_path = "tests/fake_passing_test";
-  SuiteMetrics metrics = {.total_runs = 6, .total_failures = 0, .crashed = 0};
+  SuiteMetrics metrics = {
+      .total_runs = 6, .total_failures = 0, .state = SUITE_DEFAULT};
 
   char out_buf[CAPTURE_BUF_SIZE];
   ctest_capture_stdout_start();
@@ -22,7 +23,8 @@ static void test_report_suite_metrics_pass(void) {
 
 static void test_report_suite_metrics_fail(void) {
   const char *bin_path = "tests/fake_failing_test";
-  SuiteMetrics metrics = {.total_runs = 6, .total_failures = 2, .crashed = 0};
+  SuiteMetrics metrics = {
+      .total_runs = 6, .total_failures = 2, .state = SUITE_DEFAULT};
 
   char out_buf[CAPTURE_BUF_SIZE];
   ctest_capture_stdout_start();
@@ -37,7 +39,8 @@ static void test_report_suite_metrics_fail(void) {
 
 static void test_report_suite_metrics_crash(void) {
   const char *bin_path = "tests/fake_crashing_test";
-  SuiteMetrics metrics = {.total_runs = 6, .total_failures = 3, .crashed = 1};
+  SuiteMetrics metrics = {
+      .total_runs = 6, .total_failures = 3, .state = SUITE_CRASH};
 
   char out_buf[CAPTURE_BUF_SIZE];
   ctest_capture_stdout_start();
@@ -93,7 +96,8 @@ static void test_report_summary_all_passed(void) {
   SessionMetrics session = {.total_suites = 3,
                             .total_runs = 15,
                             .total_failures = 0,
-                            .total_crashes = 0};
+                            .total_crashes = 0,
+                            .total_timeouts = 0};
 
   char out_buf[CAPTURE_BUF_SIZE];
   ctest_capture_stdout_start();
@@ -110,7 +114,8 @@ static void test_report_summary_with_failures(void) {
   SessionMetrics session = {.total_suites = 5,
                             .total_runs = 20,
                             .total_failures = 3,
-                            .total_crashes = 1};
+                            .total_crashes = 1,
+                            .total_timeouts = 0};
 
   char out_buf[CAPTURE_BUF_SIZE];
   ctest_capture_stdout_start();

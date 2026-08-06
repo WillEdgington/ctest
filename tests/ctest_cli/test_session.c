@@ -7,13 +7,16 @@ void test_update_session(void) {
   size_t n_runs = 7;
   size_t n_crashes = 1;
   size_t n_fails = 2;
+  size_t n_timeouts = 0;
 
   SessionMetrics session = {.total_suites = n_suites,
                             .total_runs = n_runs,
                             .total_crashes = n_crashes,
-                            .total_failures = n_fails};
+                            .total_failures = n_fails,
+                            .total_timeouts = n_timeouts};
 
-  SuiteMetrics suite = {.total_runs = 5, .total_failures = 3, .crashed = 0};
+  SuiteMetrics suite = {
+      .total_runs = 5, .total_failures = 3, .state = SUITE_DEFAULT};
 
   ctest_update_session(&session, &suite);
 
@@ -28,7 +31,7 @@ void test_update_session(void) {
                 "Total crashes should not increment if suite did not crash");
 
   SuiteMetrics crashed_suite = {0};
-  crashed_suite.crashed = 1;
+  crashed_suite.state = SUITE_CRASH;
   ctest_update_session(&session, &crashed_suite);
 
   ASSERT_INT_EQ(session.total_crashes - n_crashes, 1,

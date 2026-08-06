@@ -64,8 +64,10 @@ static void print_horiz_marg(const char *str) {
 }
 
 static void print_suite_conclusion(const SuiteMetrics *metrics) {
-  if (metrics->crashed != 0) {
+  if (metrics->state == SUITE_CRASH) {
     printf(CTEST_COLOR_YELLOW "[CRASH] " CTEST_COLOR_RESET);
+  } else if (metrics->state == SUITE_TIMEOUT) {
+    // print timeout conclusion
   } else if (metrics->total_failures > 0) {
     printf(CTEST_COLOR_RED "[FAIL]  " CTEST_COLOR_RESET);
   } else {
@@ -76,7 +78,7 @@ static void print_suite_conclusion(const SuiteMetrics *metrics) {
 static void print_test_outcomes(const SuiteMetrics *metrics) {
   int runs = metrics->total_runs;
   int fails = metrics->total_failures;
-  int crashed = metrics->crashed;
+  SuiteState state = metrics->state;
   int passed = runs > fails ? runs - fails : 0;
 
   if (passed > 0) {
@@ -89,9 +91,12 @@ static void print_test_outcomes(const SuiteMetrics *metrics) {
     for (int i = 0; i < fails; i++)
       printf("F");
   }
-  if (crashed == 1) {
+  if (state == SUITE_CRASH) {
     printf(CTEST_COLOR_YELLOW "C");
+  } else if (state == SUITE_TIMEOUT) {
+    // print "T" in chosen colour
   }
+
   printf(CTEST_COLOR_RESET);
 }
 

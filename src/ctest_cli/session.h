@@ -9,6 +9,7 @@ typedef struct {
   size_t total_runs;
   size_t total_failures;
   size_t total_crashes;
+  size_t total_timeouts;
 } SessionMetrics;
 
 void ctest_update_session(SessionMetrics *session, SuiteMetrics *suite);

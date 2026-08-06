@@ -70,7 +70,7 @@ SuiteMetrics ctest_execute_suite(const char *binary_path,
     waitpid(pid, &status, 0);
 
     if (WIFSIGNALED(status)) {
-      metrics.crashed = 1;
+      metrics.state = SUITE_CRASH;
 
       char crash_msg[CTEST_MAX_LINE_LEN];
       snprintf(crash_msg, CTEST_MAX_LINE_LEN,

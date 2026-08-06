@@ -5,10 +5,12 @@
 
 #define CTEST_MAX_LINE_LEN 512
 
+typedef enum { SUITE_DEFAULT, SUITE_CRASH, SUITE_TIMEOUT } SuiteState;
+
 typedef struct {
+  SuiteState state;
   size_t total_runs;
   size_t total_failures;
-  int crashed;
 } SuiteMetrics;
 
 SuiteMetrics ctest_execute_suite(const char *binary_path,

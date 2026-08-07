@@ -36,6 +36,13 @@ void test_update_session(void) {
 
   ASSERT_INT_EQ(session.total_crashes - n_crashes, 1,
                 "Total crashes should increment by 1 if suite crashed");
+
+  SuiteMetrics timedout_suite = {0};
+  timedout_suite.state = SUITE_TIMEOUT;
+  ctest_update_session(&session, &timedout_suite);
+
+  ASSERT_INT_EQ(session.total_timeouts - n_timeouts, 1,
+                "Total timeouts should increment by 1 if suite timed out");
 }
 
 int main(void) {

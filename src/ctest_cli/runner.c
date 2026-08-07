@@ -10,7 +10,8 @@
 #include <stdlib.h>
 
 static int session_exit(SessionMetrics *session) {
-  if (session->total_failures == 0 && session->total_crashes == 0)
+  if (session->total_failures == 0 && session->total_crashes == 0 &&
+      session->total_timeouts == 0)
     return 0;
   return 1;
 }
@@ -45,7 +46,8 @@ int ctest_run_session(const CTestConfig *config) {
     const char *bin_path = it.current.value;
     if (ctest_filter_matches(bin_path, config->filter_pattern) == 0)
       continue;
-    SuiteMetrics metrics = ctest_execute_suite(bin_path, &ledger);
+    SuiteMetrics metrics =
+        ctest_execute_suite(bin_path, config->timeout_sec, &ledger);
     ctest_report_suite_metrics(bin_path, &metrics);
     ctest_update_session(&session, &metrics);
   }

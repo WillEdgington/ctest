@@ -13,6 +13,7 @@
 #define CTEST_COLOR_RED "\x1b[31m"
 #define CTEST_COLOR_GREEN "\x1b[32m"
 #define CTEST_COLOR_YELLOW "\x1b[33m"
+#define CTEST_COLOR_CYAN "\x1b[36m"
 #define CTEST_COLOR_RESET "\x1b[0m"
 
 extern int ctest_run_count;

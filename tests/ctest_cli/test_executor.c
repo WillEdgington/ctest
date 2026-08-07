@@ -10,6 +10,7 @@
 static const char *mock_passing_bin = "./mock_passing_bin_35893333";
 static const char *mock_failing_bin = "./mock_failing_bin_78677545";
 static const char *mock_crashing_bin = "./mock_crashing_bin_48691321";
+static const char *mock_timeout_bin = "./mock_timeout_bin_99182736";
 
 static void test_executor_passing_suite(void) {
   ctest_setup_mock_binary(mock_passing_bin, "#include <stdio.h>\n"
@@ -21,7 +22,7 @@ static void test_executor_passing_suite(void) {
   Vector ledger;
   vector_init(&ledger, CTEST_MAX_LINE_LEN);
 
-  SuiteMetrics metrics = ctest_execute_suite(mock_passing_bin, &ledger);
+  SuiteMetrics metrics = ctest_execute_suite(mock_passing_bin, 0, &ledger);
 
   ASSERT_INT_EQ(metrics.total_runs, 5,
                 "Total runs parsed correctly for passing suite");
@@ -46,7 +47,7 @@ static void test_executor_failing_suite(void) {
   Vector ledger;
   vector_init(&ledger, CTEST_MAX_LINE_LEN);
 
-  SuiteMetrics metrics = ctest_execute_suite(mock_failing_bin, &ledger);
+  SuiteMetrics metrics = ctest_execute_suite(mock_failing_bin, 0, &ledger);
 
   ASSERT_INT_EQ(metrics.total_runs, 2,
                 "Total runs parsed correctly for failing suite");
@@ -75,7 +76,7 @@ static void test_executor_crashing_suite(void) {
   Vector ledger;
   vector_init(&ledger, CTEST_MAX_LINE_LEN);
 
-  SuiteMetrics metrics = ctest_execute_suite(mock_crashing_bin, &ledger);
+  SuiteMetrics metrics = ctest_execute_suite(mock_crashing_bin, 0, &ledger);
 
   ASSERT_INT_EQ(metrics.state, SUITE_CRASH, "Suite detected crash");
   ASSERT_INT_EQ((int)ledger.count, 1, "Ledger caught crash packet");
@@ -88,12 +89,38 @@ static void test_executor_crashing_suite(void) {
   ctest_teardown_mock_binary(mock_crashing_bin);
 }
 
+// This test seems like it could be done better, but validates well enough for
+// now Need to find a way that it can be done without sleeping for so long.
+static void test_executor_timeout_suite(void) {
+  ctest_setup_mock_binary(mock_timeout_bin, "#include <unistd.h>\n"
+                                            "int main(void) {\n"
+                                            "  sleep(10);\n"
+                                            "  return 0;\n"
+                                            "}\n");
+
+  Vector ledger;
+  vector_init(&ledger, CTEST_MAX_LINE_LEN);
+
+  SuiteMetrics metrics = ctest_execute_suite(mock_timeout_bin, 1, &ledger);
+
+  ASSERT_INT_EQ(metrics.state, SUITE_TIMEOUT, "Suite detected timeout");
+  ASSERT_INT_EQ((int)ledger.count, 1, "Ledger caught timeout packet");
+
+  char *captured_timeout = (char *)vector_get(&ledger, 0);
+  ASSERT(strstr(captured_timeout, "TIMEOUT|") != NULL,
+         "Packet contains TIMEOUT prefix");
+
+  vector_free(&ledger);
+  ctest_teardown_mock_binary(mock_timeout_bin);
+}
+
 int main(void) {
   printf("\nRunning: %s...", __FILE__);
 
   test_executor_passing_suite();
   test_executor_failing_suite();
   test_executor_crashing_suite();
+  test_executor_timeout_suite();
 
   ctest_summary();
   return ctest_fail_count == 0 ? 0 : 1;

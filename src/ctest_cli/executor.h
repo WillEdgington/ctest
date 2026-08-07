@@ -14,6 +14,7 @@ typedef struct {
 } SuiteMetrics;
 
 SuiteMetrics ctest_execute_suite(const char *binary_path,
+                                 unsigned int timeout_sec,
                                  Vector *failure_ledger);
 
 #endif

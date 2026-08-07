@@ -87,6 +87,37 @@ static void test_runner_with_crash(void) {
   ctest_teardown_mock_dir(test_dir);
 }
 
+// same as the test_executor test for the timeout feature, it would be good to
+// find a different way to test this current approach sleeps for a second, would
+// be great if it didn't
+static void test_runner_with_timeout(void) {
+  const char *test_dir = "sandbox_runner_timeout_dir_77112233";
+  const char *bin_path =
+      "sandbox_runner_timeout_dir_77112233/test_timeout_88223344";
+
+  ctest_setup_mock_dir(test_dir);
+  ctest_setup_mock_binary(bin_path, "#include <unistd.h>\n"
+                                    "int main(void) {\n"
+                                    "    sleep(10);\n"
+                                    "    return 0;\n"
+                                    "}\n");
+
+  CTestConfig config;
+  ctest_config_init(&config);
+  config.target_dir = test_dir;
+  config.timeout_sec = 1;
+
+  char out_buf[CAPTURE_BUF_SIZE];
+  ctest_capture_stdout_start();
+  int res = ctest_run_session(&config);
+  ctest_capture_stdout_end(out_buf, sizeof(out_buf));
+
+  ASSERT_INT_EQ(res, 1, "Runner should return 1 when a test suite times out");
+
+  ctest_teardown_mock_binary(bin_path);
+  ctest_teardown_mock_dir(test_dir);
+}
+
 static void test_runner_invalid_directory(void) {
   CTestConfig config;
   ctest_config_init(&config);
@@ -154,6 +185,7 @@ int main(void) {
   test_runner_all_passed();
   test_runner_with_failures();
   test_runner_with_crash();
+  test_runner_with_timeout();
   test_runner_invalid_directory();
   test_runner_with_filter();
 

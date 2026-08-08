@@ -7,7 +7,8 @@
 
 static void test_report_suite_metrics_pass(void) {
   const char *bin_path = "tests/fake_passing_test";
-  SuiteMetrics metrics = {.total_runs = 6, .total_failures = 0, .crashed = 0};
+  SuiteMetrics metrics = {
+      .total_runs = 6, .total_failures = 0, .state = SUITE_DEFAULT};
 
   char out_buf[CAPTURE_BUF_SIZE];
   ctest_capture_stdout_start();
@@ -22,7 +23,8 @@ static void test_report_suite_metrics_pass(void) {
 
 static void test_report_suite_metrics_fail(void) {
   const char *bin_path = "tests/fake_failing_test";
-  SuiteMetrics metrics = {.total_runs = 6, .total_failures = 2, .crashed = 0};
+  SuiteMetrics metrics = {
+      .total_runs = 6, .total_failures = 2, .state = SUITE_DEFAULT};
 
   char out_buf[CAPTURE_BUF_SIZE];
   ctest_capture_stdout_start();
@@ -37,7 +39,8 @@ static void test_report_suite_metrics_fail(void) {
 
 static void test_report_suite_metrics_crash(void) {
   const char *bin_path = "tests/fake_crashing_test";
-  SuiteMetrics metrics = {.total_runs = 6, .total_failures = 3, .crashed = 1};
+  SuiteMetrics metrics = {
+      .total_runs = 6, .total_failures = 3, .state = SUITE_CRASH};
 
   char out_buf[CAPTURE_BUF_SIZE];
   ctest_capture_stdout_start();
@@ -50,10 +53,27 @@ static void test_report_suite_metrics_crash(void) {
                       "Crashed suite output should contain binary path");
 }
 
+static void test_report_suite_metrics_timeout(void) {
+  const char *bin_path = "tests/fake_timeout_test";
+  SuiteMetrics metrics = {
+      .total_runs = 2, .total_failures = 0, .state = SUITE_TIMEOUT};
+
+  char out_buf[CAPTURE_BUF_SIZE];
+  ctest_capture_stdout_start();
+  ctest_report_suite_metrics(bin_path, &metrics);
+  ctest_capture_stdout_end(out_buf, sizeof(out_buf));
+
+  ASSERT_PTR_NOT_NULL(strstr(out_buf, "[TIME]"),
+                      "Timed out suite output should contain [TIME] tag");
+  ASSERT_PTR_NOT_NULL(strstr(out_buf, bin_path),
+                      "Timed out suite output should contain binary path");
+}
+
 static void test_report_suite_metrics(void) {
   test_report_suite_metrics_pass();
   test_report_suite_metrics_fail();
   test_report_suite_metrics_crash();
+  test_report_suite_metrics_timeout();
 }
 
 static void test_report_ledger(void) {
@@ -93,7 +113,8 @@ static void test_report_summary_all_passed(void) {
   SessionMetrics session = {.total_suites = 3,
                             .total_runs = 15,
                             .total_failures = 0,
-                            .total_crashes = 0};
+                            .total_crashes = 0,
+                            .total_timeouts = 0};
 
   char out_buf[CAPTURE_BUF_SIZE];
   ctest_capture_stdout_start();
@@ -110,7 +131,8 @@ static void test_report_summary_with_failures(void) {
   SessionMetrics session = {.total_suites = 5,
                             .total_runs = 20,
                             .total_failures = 3,
-                            .total_crashes = 1};
+                            .total_crashes = 1,
+                            .total_timeouts = 2};
 
   char out_buf[CAPTURE_BUF_SIZE];
   ctest_capture_stdout_start();
@@ -123,10 +145,14 @@ static void test_report_summary_with_failures(void) {
                       "Summary should display total suites count");
   ASSERT_PTR_NOT_NULL(strstr(out_buf, "20"),
                       "Summary should display total run count");
+  ASSERT_PTR_NOT_NULL(strstr(out_buf, "17"),
+                      "Summary should display passed count");
   ASSERT_PTR_NOT_NULL(strstr(out_buf, "3"),
                       "Summary should display failure count");
   ASSERT_PTR_NOT_NULL(strstr(out_buf, "1"),
                       "Summary should display crash count");
+  ASSERT_PTR_NOT_NULL(strstr(out_buf, "2"),
+                      "Summary should display timeouts count");
 }
 
 static void test_report_summary(void) {

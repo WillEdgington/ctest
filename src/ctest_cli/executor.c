@@ -15,7 +15,7 @@
 
 static void process_output_line(const char *line, SuiteMetrics *metrics,
                                 Vector *failure_ledger) {
-  char *fail_ptr = strstr(line, "FAIL|");
+  char *fail_ptr = strstr(line, CTEST_COLOR_RED "FAIL|");
   char *summ_ptr = strstr(line, "SUMMARY|");
 
   if (fail_ptr != NULL) {

@@ -1,4 +1,5 @@
 #include "reporter.h"
+#include "config.h"
 #include "executor.h"
 #include "session.h"
 #include <clib/iter.h>
@@ -100,7 +101,11 @@ static void print_test_outcomes(const SuiteMetrics *metrics) {
   printf(CTEST_COLOR_RESET);
 }
 
-void ctest_report_start_banner(const char *root_dir) {
+void ctest_report_start_banner(const char *root_dir, CTestVerbosity verbosity) {
+  // do not print start banner when --quiet flag is present
+  if (verbosity == CTEST_VERBOSITY_QUIET)
+    return;
+
   char buffer[buffer_len];
   snprintf(buffer, sizeof(buffer), "--- RUNNING CTEST ON: %s ---", root_dir);
 
@@ -115,7 +120,12 @@ void ctest_report_start_banner(const char *root_dir) {
 }
 
 void ctest_report_suite_metrics(const char *binary_path,
-                                const SuiteMetrics *metrics) {
+                                const SuiteMetrics *metrics,
+                                CTestVerbosity verbosity) {
+  // do not print individual suite metrics when --quiet flag is present
+  if (verbosity == CTEST_VERBOSITY_QUIET)
+    return;
+
   print_suite_conclusion(metrics);
   printf("%s: ", binary_path);
   print_test_outcomes(metrics);
@@ -127,10 +137,14 @@ void ctest_report_suite_metrics(const char *binary_path,
   */
 }
 
-void ctest_report_ledger(const Vector *ledger) {
+void ctest_report_ledger(const Vector *ledger, CTestVerbosity verbosity) {
+  // do not print an empty failure report
   if (ledger->count == 0)
     return;
-  print_horiz_marg(CTEST_COLOR_RED " FAILURE REPORT " CTEST_COLOR_RESET);
+
+  // do not print header when --quiet flag present
+  if (verbosity != CTEST_VERBOSITY_QUIET)
+    print_horiz_marg(CTEST_COLOR_RED " FAILURE REPORT " CTEST_COLOR_RESET);
 
   Iter it = vector_iter((Vector *)ledger);
   while (it.next(&it) == 0) {
@@ -147,7 +161,41 @@ void ctest_report_ledger(const Vector *ledger) {
   */
 }
 
-void ctest_report_summary(const SessionMetrics *session) {
+static void report_summary_quiet(const SessionMetrics *session) {
+  size_t suites = session->total_suites;
+  size_t tests = session->total_runs;
+  size_t failed = session->total_failures;
+  size_t crashed = session->total_crashes;
+  size_t timeouts = session->total_timeouts;
+  size_t passed = tests > failed ? tests - failed : 0;
+
+  if (failed == 0 && crashed == 0 && timeouts == 0) {
+    printf(CTEST_COLOR_GREEN "ALL " CTEST_COLOR_RESET "%zu" CTEST_COLOR_GREEN
+                             " SUITES PASSED" CTEST_COLOR_RESET "\n",
+           suites);
+  } else {
+    printf("SUITES: %zu, TESTS: %zu, PASSED: " CTEST_COLOR_GREEN
+           "%zu" CTEST_COLOR_RESET ", FAILED: " CTEST_COLOR_RED
+           "%zu" CTEST_COLOR_RESET ", CRASHED: " CTEST_COLOR_YELLOW
+           "%zu" CTEST_COLOR_RESET ", TIMEOUTS: " CTEST_COLOR_CYAN
+           "%zu" CTEST_COLOR_RESET "\n",
+           suites, tests, passed, failed, crashed, timeouts);
+  }
+  /*
+  All Passed:
+  ALL X SUITES PASSED
+  Some Passed:
+  SUITES: X, TESTS: X, PASSED: X, FAILED: X, CRASHED: X, TIMEOUTS: X
+  */
+}
+
+void ctest_report_summary(const SessionMetrics *session,
+                          CTestVerbosity verbosity) {
+  if (verbosity == CTEST_VERBOSITY_QUIET) {
+    report_summary_quiet(session);
+    return;
+  }
+
   size_t suites = session->total_suites;
   size_t tests = session->total_runs;
   size_t failed = session->total_failures;
@@ -175,13 +223,13 @@ void ctest_report_summary(const SessionMetrics *session) {
   print_centred_string(buffer, NULL);
   print_horiz_marg(NULL);
   /*
-  All Passed:
+  All Passed (roughly):
   ==============================================================================
                               ALL X SUITES PASSED
   ==============================================================================
-  Some Passed:
+  Some Passed (roughly):
   ==============================================================================
-                SUITES: X  TESTS: X  PASSED: X  FAILED: X  CRASHED: X
+        SUITES: X  TESTS: X  PASSED: X  FAILED: X  CRASHED: X  TIMEOUTS: X
   ==============================================================================
   */
 }

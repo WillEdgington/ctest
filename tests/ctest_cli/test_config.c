@@ -11,6 +11,9 @@ static void test_config_init_defaults(void) {
                   "Default filter pattern configuration should be NULL");
   ASSERT_INT_EQ(config.timeout_sec, 0,
                 "Default timeout configuration should be 0 (no timeout)");
+  ASSERT_INT_EQ(config.verbosity, CTEST_VERBOSITY_NORMAL,
+                "Default verbosity level configuration should be normal "
+                "(CTEST_VERBOSITY_NORMAL)");
   ASSERT_INT_EQ(config.jobs, 1, "Default jobs configuration should be 1");
   ASSERT_PTR_NULL(config.json_output_path,
                   "Default json output path configuration should be NULL");
@@ -56,9 +59,9 @@ static void test_parse_valid_flags(void) {
   ASSERT_INT_EQ(
       ctest_config_parse(argc, argv, &config), 0,
       "Command populated by multiple valid flags should parse error free");
-  ASSERT_INT_EQ(config.verbose, 1,
-                "Parsed verbose flag ('-v') should set verbosity configuration "
-                "to 1 (true)");
+  ASSERT_INT_EQ(config.verbosity, CTEST_VERBOSITY_VERBOSE,
+                "Parsed verbose flag ('-v') should set verbosity level to "
+                "verbose (CTEST_VERBOSITY_VERBOSE)");
   ASSERT_STR_EQ(config.filter_pattern, "suite_name",
                 "Parsed filter pattern value ('-f <pattern>') should be "
                 "assigned to filter pattern configuration");
@@ -71,6 +74,17 @@ static void test_parse_valid_flags(void) {
   ASSERT_STR_EQ(config.json_output_path, "report.json",
                 "Parsed json output path ('--json <path>') should assign to "
                 "json output path configuration");
+
+  ctest_config_init(&config);
+
+  char *argv_q[] = {"ctest", "-q"};
+  int argc_q = 2;
+
+  ctest_config_parse(argc_q, argv_q, &config);
+
+  ASSERT_INT_EQ(config.verbosity, CTEST_VERBOSITY_QUIET,
+                "Parsed quite flag ('-q') should set verbosity level to quiet "
+                "(CTEST_VERBOSITY_QUIET)");
 }
 
 static void test_parse_help_flag(void) {

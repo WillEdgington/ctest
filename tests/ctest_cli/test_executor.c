@@ -39,7 +39,8 @@ static void test_executor_failing_suite(void) {
   ctest_setup_mock_binary(mock_failing_bin,
                           "#include <stdio.h>\n"
                           "int main(void) {\n"
-                          "  printf(\"FAIL|Line 12 in test.c\\n\");\n"
+                          "  printf(\"" CTEST_COLOR_RED
+                          "FAIL|Line 12 in test.c\\n" CTEST_COLOR_RESET "\");\n"
                           "  printf(\"SUMMARY|2|1\\n\");\n"
                           "  return 0;\n"
                           "}\n");
@@ -54,10 +55,10 @@ static void test_executor_failing_suite(void) {
   ASSERT_INT_EQ(metrics.total_failures, 1,
                 "Total failures parsed correctly for failing suite");
   ASSERT_INT_EQ(metrics.state, SUITE_DEFAULT, "Failing suite did not crash");
-  ASSERT_INT_EQ((int)ledger.count, 1, "Ledger caught right amount of failures");
+  ASSERT_INT_EQ(ledger.count, 1, "Ledger caught right amount of failures");
 
   char *captured_fail = (char *)vector_get(&ledger, 0);
-  ASSERT_STR_EQ(captured_fail, "FAIL|Line 12 in test.c\n",
+  ASSERT_STR_EQ(captured_fail, CTEST_COLOR_RED "FAIL|Line 12 in test.c\n",
                 "Captured exact failure string");
 
   vector_free(&ledger);

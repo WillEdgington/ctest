@@ -1,5 +1,6 @@
 #include <ctest/ctest.h>
 #include <stdarg.h>
+#include <stdbool.h>
 #include <stdlib.h>
 
 #define CUSTOM_MSG_BUFFER_SIZE 512
@@ -15,26 +16,41 @@ static int max_path_len = 256;
 static int ctest_capture_pipefds[2] = {-1, -1};
 static int ctest_capture_saved_stdout = -1;
 
-void ctest_report_failure(const char *file, int line, const char *expr,
-                          const char *msg, ...) {
+void ctest_report_result(bool passed, const char *file, int line,
+                         const char *expr, const char *msg, ...) {
   char custom_msg[CUSTOM_MSG_BUFFER_SIZE] = {0};
 
-  va_list args;
-  va_start(args, msg);
-  vsnprintf(custom_msg, sizeof(custom_msg), msg, args);
-  va_end(args);
+  if (msg != NULL) {
+    va_list args;
+    va_start(args, msg);
+    vsnprintf(custom_msg, sizeof(custom_msg), msg, args);
+    va_end(args);
+  }
 
   const char *runner_active = getenv("CTEST_RUNNER");
+  const char *verbose_active = getenv("CTEST_VERBOSE");
 
-  if (runner_active && strcmp(runner_active, "1") == 0) {
-    fprintf(stdout, CTEST_COLOR_RED "FAIL|%s|%d|%s|%s" CTEST_COLOR_RESET "\n",
-            file, line, expr, custom_msg);
-    fflush(stdout);
+  bool is_runner = (runner_active && strcmp(runner_active, "1") == 0);
+  bool is_verbose = (verbose_active && strcmp(verbose_active, "1") == 0);
+
+  if (is_runner) {
+    if (!passed) {
+      fprintf(stdout, "FAIL|%s|%d|%s|%s\n", file, line, expr, custom_msg);
+      fflush(stdout);
+    } else if (is_verbose) {
+      fprintf(stdout, "PASS|%s|%d|%s|%s\n", file, line, expr, custom_msg);
+      fflush(stdout);
+    }
   } else {
-    fprintf(stderr, "\n  " CTEST_COLOR_RED "[FAIL] %s" CTEST_COLOR_RESET "\n",
-            custom_msg);
-    fprintf(stderr, "         Expression: %s\n", expr);
-    fprintf(stderr, "         Location  : Line %d in %s\n", line, file);
+    if (!passed) {
+      fprintf(stderr, "\n  " CTEST_COLOR_RED "[FAIL] %s" CTEST_COLOR_RESET "\n",
+              custom_msg[0] ? custom_msg : expr);
+      fprintf(stderr, "         Expression: %s\n", expr);
+      fprintf(stderr, "         Location  : Line %d in %s\n", line, file);
+    } else if (is_verbose) {
+      fprintf(stdout, "  " CTEST_COLOR_GREEN "[PASS]" CTEST_COLOR_RESET " %s\n",
+              custom_msg[0] ? custom_msg : expr);
+    }
   }
 }
 

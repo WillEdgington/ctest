@@ -119,12 +119,24 @@ void ctest_report_start_banner(const char *root_dir, CTestVerbosity verbosity) {
   */
 }
 
+void ctest_report_suite_start(const char *binary_path,
+                              CTestVerbosity verbosity) {
+  if (verbosity == CTEST_VERBOSITY_VERBOSE)
+    printf("[RUN] %s\n", binary_path);
+}
+
 void ctest_report_suite_metrics(const char *binary_path,
                                 const SuiteMetrics *metrics,
                                 CTestVerbosity verbosity) {
   // do not print individual suite metrics when --quiet flag is present
   if (verbosity == CTEST_VERBOSITY_QUIET)
     return;
+  // when --verbose flag present, we print individual assertions, not a basic
+  // summary of the suite metrics
+  if (verbosity == CTEST_VERBOSITY_VERBOSE) {
+    printf("\n");
+    return;
+  }
 
   print_suite_conclusion(metrics);
   printf("%s: ", binary_path);

@@ -7,6 +7,8 @@
 #include <clib/vector.h>
 
 void ctest_report_start_banner(const char *root_dir, CTestVerbosity verbosity);
+void ctest_report_suite_start(const char *binary_path,
+                              CTestVerbosity verbosity);
 void ctest_report_suite_metrics(const char *binary_path,
                                 const SuiteMetrics *metrics,
                                 CTestVerbosity verbosity);

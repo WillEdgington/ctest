@@ -39,6 +39,24 @@ static void test_report_start_banner(void) {
   test_report_start_banner_quiet();
 }
 
+void test_reporter_verbose_suite_start(void) {
+  char out_buf[CAPTURE_BUF_SIZE];
+
+  ctest_capture_stdout_start();
+  ctest_report_suite_start("./tests/mock_bin", CTEST_VERBOSITY_VERBOSE);
+  ctest_capture_stdout_end(out_buf, sizeof(out_buf));
+
+  ASSERT_PTR_NOT_NULL(strstr(out_buf, "[RUN] ./tests/mock_bin"),
+                      "Verbose suite start outputs '[RUN] <bin_path>'");
+
+  memset(out_buf, 0, sizeof(out_buf));
+  ctest_capture_stdout_start();
+  ctest_report_suite_start("./tests/mock_bin", CTEST_VERBOSITY_NORMAL);
+  ctest_capture_stdout_end(out_buf, sizeof(out_buf));
+
+  ASSERT(out_buf[0] == '\0', "Normal suite start produces no banner output");
+}
+
 static void test_report_suite_metrics_pass(void) {
   const char *bin_path = "tests/fake_passing_test";
   SuiteMetrics metrics = {

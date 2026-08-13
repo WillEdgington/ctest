@@ -35,10 +35,16 @@ void ctest_report_result(bool passed, const char *file, int line,
 
   if (is_runner) {
     if (!passed) {
-      fprintf(stdout, "FAIL|%s|%d|%s|%s\n", file, line, expr, custom_msg);
+      fprintf(stdout,
+              "FAIL" CTEST_TEST_DELIM "%s" CTEST_TEST_DELIM
+              "%d" CTEST_TEST_DELIM "%s" CTEST_TEST_DELIM "%s\n",
+              file, line, expr, custom_msg);
       fflush(stdout);
     } else if (is_verbose) {
-      fprintf(stdout, "PASS|%s|%d|%s|%s\n", file, line, expr, custom_msg);
+      fprintf(stdout,
+              "PASS" CTEST_TEST_DELIM "%s" CTEST_TEST_DELIM
+              "%d" CTEST_TEST_DELIM "%s" CTEST_TEST_DELIM "%s\n",
+              file, line, expr, custom_msg);
       fflush(stdout);
     }
   } else {
@@ -58,7 +64,8 @@ void ctest_summary(void) {
   const char *runner_active = getenv("CTEST_RUNNER");
 
   if (runner_active && strcmp(runner_active, "1") == 0) {
-    fprintf(stdout, "\nSUMMARY|%d|%d\n", ctest_run_count, ctest_fail_count);
+    fprintf(stdout, "\nSUMMARY" CTEST_TEST_DELIM "%d" CTEST_TEST_DELIM "%d\n",
+            ctest_run_count, ctest_fail_count);
     fflush(stdout);
     return;
   }

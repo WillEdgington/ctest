@@ -3,7 +3,7 @@
 #include <ctest/ctest.h>
 #include <stdio.h>
 
-#define CAPTURE_BUF_SIZE 2048
+static int CAPTURE_BUF_SIZE = 2048;
 
 static void test_runner_all_passed(void) {
   const char *test_dir = "sandbox_runner_pass_dir_47383244";
@@ -36,13 +36,16 @@ static void test_runner_with_failures(void) {
   const char *bin_path = "sandbox_runner_fail_dir_86946555/test_fail_95035553";
 
   ctest_setup_mock_dir(test_dir);
-  ctest_setup_mock_binary(
-      bin_path, "#include <stdio.h>\n"
-                "int main(void) {\n"
-                "    printf(\"FAIL|test.c|12|x == y|Expected equality\\n\");\n"
-                "    printf(\"SUMMARY|2|1|0\\n\");\n"
-                "    return 0;\n"
-                "}\n");
+  ctest_setup_mock_binary(bin_path,
+                          "#include <stdio.h>\n"
+                          "int main(void) {\n"
+                          "    printf(\"FAIL" CTEST_TEST_DELIM
+                          "test.c" CTEST_TEST_DELIM "12" CTEST_TEST_DELIM
+                          "x == y" CTEST_TEST_DELIM "Expected equality\\n\");\n"
+                          "    printf(\"SUMMARY" CTEST_TEST_DELIM
+                          "2" CTEST_TEST_DELIM "1" CTEST_TEST_DELIM "0\\n\");\n"
+                          "    return 0;\n"
+                          "}\n");
 
   CTestConfig config;
   ctest_config_init(&config);
@@ -98,7 +101,7 @@ static void test_runner_with_timeout(void) {
   ctest_setup_mock_dir(test_dir);
   ctest_setup_mock_binary(bin_path, "#include <unistd.h>\n"
                                     "int main(void) {\n"
-                                    "    sleep(10);\n"
+                                    "    usleep(1100000);\n"
                                     "    return 0;\n"
                                     "}\n");
 
@@ -141,19 +144,23 @@ static void test_runner_with_filter(void) {
 
   ctest_setup_mock_dir(test_dir);
 
-  ctest_setup_mock_binary(bin_pass, "#include <stdio.h>\n"
-                                    "int main(void) {\n"
-                                    "    printf(\"SUMMARY|1|0|0\\n\");\n"
-                                    "    return 0;\n"
-                                    "}\n");
-
-  ctest_setup_mock_binary(bin_fail,
+  ctest_setup_mock_binary(bin_pass,
                           "#include <stdio.h>\n"
                           "int main(void) {\n"
-                          "    printf(\"FAIL|test.c|5|0|Failed\\n\");\n"
-                          "    printf(\"SUMMARY|1|1|0\\n\");\n"
+                          "    printf(\"SUMMARY" CTEST_TEST_DELIM
+                          "1" CTEST_TEST_DELIM "0" CTEST_TEST_DELIM "0\\n\");\n"
                           "    return 0;\n"
                           "}\n");
+
+  ctest_setup_mock_binary(
+      bin_fail, "#include <stdio.h>\n"
+                "int main(void) {\n"
+                "    printf(\"FAIL" CTEST_TEST_DELIM "test.c" CTEST_TEST_DELIM
+                "5" CTEST_TEST_DELIM "0" CTEST_TEST_DELIM "Failed\\n\");\n"
+                "    printf(\"SUMMARY" CTEST_TEST_DELIM "1" CTEST_TEST_DELIM
+                "1" CTEST_TEST_DELIM "0\\n\");\n"
+                "    return 0;\n"
+                "}\n");
 
   CTestConfig config;
   ctest_config_init(&config);
@@ -179,6 +186,37 @@ static void test_runner_with_filter(void) {
   ctest_teardown_mock_dir(test_dir);
 }
 
+static void test_runner_verbose_session(void) {
+  const char *test_dir = "sandbox_runner_verbose_dir_11223344";
+  const char *bin_path =
+      "sandbox_runner_verbose_dir_11223344/test_verb_55667788";
+
+  ctest_setup_mock_dir(test_dir);
+  ctest_setup_mock_binary(bin_path, "#include <stdio.h>\n"
+                                    "int main(void) {\n"
+                                    "    printf(\"SUMMARY" CTEST_TEST_DELIM
+                                    "1" CTEST_TEST_DELIM "0\\n\");\n"
+                                    "    return 0;\n"
+                                    "}\n");
+
+  CTestConfig config;
+  ctest_config_init(&config);
+  config.target_dir = test_dir;
+  config.verbosity = CTEST_VERBOSITY_VERBOSE;
+
+  char out_buf[CAPTURE_BUF_SIZE];
+  ctest_capture_stdout_start();
+  int res = ctest_run_session(&config);
+  ctest_capture_stdout_end(out_buf, sizeof(out_buf));
+
+  ASSERT_INT_EQ(res, 0, "Runner returns 0 in verbose mode");
+  ASSERT(strstr(out_buf, "[RUN]") != NULL,
+         "Output contains [RUN] suite banner");
+
+  ctest_teardown_mock_binary(bin_path);
+  ctest_teardown_mock_dir(test_dir);
+}
+
 int main(void) {
   printf("\nRunning: %s...\n", __FILE__);
 
@@ -188,6 +226,7 @@ int main(void) {
   test_runner_with_timeout();
   test_runner_invalid_directory();
   test_runner_with_filter();
+  test_runner_verbose_session();
 
   ctest_summary();
   return ctest_fail_count == 0 ? 0 : 1;

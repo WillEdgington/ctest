@@ -33,7 +33,7 @@ int ctest_run_session(const CTestConfig *config) {
   if (ledger_init(&ledger) == -1)
     return -1;
 
-  ctest_report_start_banner(config->target_dir);
+  ctest_report_start_banner(config->target_dir, config->verbosity);
 
   Vector *test_bins = ctest_discover_tests(config->target_dir);
   if (test_bins == NULL) {
@@ -46,17 +46,21 @@ int ctest_run_session(const CTestConfig *config) {
     const char *bin_path = it.current.value;
     if (ctest_filter_matches(bin_path, config->filter_pattern) == 0)
       continue;
-    SuiteMetrics metrics =
-        ctest_execute_suite(bin_path, config->timeout_sec, &ledger);
-    ctest_report_suite_metrics(bin_path, &metrics);
+
+    ctest_report_suite_start(bin_path, config->verbosity);
+
+    SuiteMetrics metrics = ctest_execute_suite(bin_path, config->timeout_sec,
+                                               config->verbosity, &ledger);
+
+    ctest_report_suite_metrics(bin_path, &metrics, config->verbosity);
     ctest_update_session(&session, &metrics);
   }
   test_binaries_free(test_bins);
 
-  ctest_report_ledger(&ledger);
+  ctest_report_ledger(&ledger, config->verbosity);
   ledger_free(&ledger);
 
-  ctest_report_summary(&session);
+  ctest_report_summary(&session, config->verbosity);
 
   return session_exit(&session);
 }

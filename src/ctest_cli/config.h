@@ -6,11 +6,17 @@
 
 #define DEFAULT_TARGET_DIR "./tests"
 
+typedef enum {
+  CTEST_VERBOSITY_NORMAL,
+  CTEST_VERBOSITY_QUIET,
+  CTEST_VERBOSITY_VERBOSE
+} CTestVerbosity;
+
 typedef struct {
   const char *target_dir;
   const char *filter_pattern;
   const char *json_output_path;
-  int verbose;
+  CTestVerbosity verbosity;
   unsigned int timeout_sec;
   size_t jobs;
 } CTestConfig;

@@ -7,6 +7,7 @@
 
 static struct option long_options[] = {{"help", no_argument, 0, 'h'},
                                        {"verbose", no_argument, 0, 'v'},
+                                       {"quiet", no_argument, 0, 'q'},
                                        {"filter", required_argument, 0, 'f'},
                                        {"timeout", required_argument, 0, 't'},
                                        {"jobs", required_argument, 0, 'j'},
@@ -20,7 +21,7 @@ void ctest_config_init(CTestConfig *config) {
   config->filter_pattern = NULL;
   config->timeout_sec = 0;
   config->jobs = 1;
-  config->verbose = 0;
+  config->verbosity = CTEST_VERBOSITY_NORMAL;
   config->json_output_path = NULL;
 }
 
@@ -32,14 +33,17 @@ int ctest_config_parse(int argc, char *argv[], CTestConfig *config) {
   opterr = 0;
   int opt;
 
-  while ((opt = getopt_long(argc, argv, "hvf:t:j:", long_options, NULL)) !=
+  while ((opt = getopt_long(argc, argv, "hvqf:t:j:", long_options, NULL)) !=
          -1) {
     switch (opt) {
     case 'h':
       ctest_config_print_usage(argv[0], stdout);
       return 1;
     case 'v':
-      config->verbose = 1;
+      config->verbosity = CTEST_VERBOSITY_VERBOSE;
+      break;
+    case 'q':
+      config->verbosity = CTEST_VERBOSITY_QUIET;
       break;
     case 'f':
       config->filter_pattern = optarg;
@@ -86,7 +90,11 @@ void ctest_config_print_usage(const char *exec_name, FILE *stream) {
   fprintf(stream, "Options:\n");
   fprintf(stream,
           "  -h, --help              Show this help message and exit\n");
-  fprintf(stream, "  -v, --verbose           Enable verbose runner output\n");
+  fprintf(
+      stream,
+      "  -v, --verbose           Print detailed execution output per suite\n");
+  fprintf(stream, "  -q, --quiet             Suppress per-suite progress; show "
+                  "summary only\n");
   fprintf(
       stream,
       "  -f, --filter <pattern>  Run only test suites matching <pattern>\n");

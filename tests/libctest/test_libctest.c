@@ -3,6 +3,8 @@
 #include <stdio.h>
 #include <stdlib.h>
 
+static size_t BUF_SIZE = 128;
+
 void test_basic_assertions(void) {
   ASSERT(1 == 1, "One should equal one");
   ASSERT(5 > 3, "Five should be greater than three");
@@ -33,7 +35,7 @@ void test_environment_fixtures(void) {
   FILE *f = fopen(test_file, "r");
   ASSERT_PTR_NOT_NULL(f, "Mock file should exist and open successfully");
   if (f != NULL) {
-    char buffer[128] = {0};
+    char buffer[BUF_SIZE];
     fgets(buffer, sizeof(buffer), f);
     fclose(f);
     ASSERT_STR_EQ(buffer, file_content,
@@ -100,30 +102,30 @@ void test_output_muting(void) {
   printf("THIS SHOULD BE HIDDEN FROM THE TERMINAL STANDARD OUTPUT STREAM\n");
 
   ctest_unmute_output(saved_stdout, STDOUT_FILENO);
-  printf("  [INFO] Terminal output unmuted successfully.");
+  printf("  [INFO] Terminal output unmuted successfully.\n");
 }
 
 void test_stdout_capturing(void) {
-  char buf[128];
+  char buf[BUF_SIZE];
 
   int start_res = ctest_capture_stdout_start();
-  ASSERT_INT_EQ(start_res, 0, "Stdout capture setup succeeds");
-
   printf("CAPTURE_TEST_PAYLOAD");
-
   ssize_t bytes = ctest_capture_stdout_end(buf, sizeof(buf));
+
+  ASSERT_INT_EQ(start_res, 0, "Stdout capture setup succeeds");
   ASSERT(bytes > 0, "Captured bytes should be greater than zero");
   ASSERT_STR_EQ(buf, "CAPTURE_TEST_PAYLOAD",
                 "Captured string matches stdout output");
 }
 
 int main(void) {
-  printf("\nRunning: %s...", __FILE__);
+  printf("\nRunning: %s...\n", __FILE__);
 
   test_basic_assertions();
   test_environment_fixtures();
   test_output_muting();
   test_mock_binary_fixtures();
+  test_stdout_capturing();
 
   ctest_summary();
   return ctest_fail_count == 0 ? 0 : 1;

@@ -1,7 +1,9 @@
 #ifndef CTEST_EXECUTOR_H
 #define CTEST_EXECUTOR_H
 
+#include "config.h"
 #include <clib/vector.h>
+#include <stddef.h>
 
 #define CTEST_MAX_LINE_LEN 512
 
@@ -15,6 +17,7 @@ typedef struct {
 
 SuiteMetrics ctest_execute_suite(const char *binary_path,
                                  unsigned int timeout_sec,
+                                 CTestVerbosity verbosity,
                                  Vector *failure_ledger);
 
 #endif

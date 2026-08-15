@@ -126,10 +126,9 @@ static void test_runner_invalid_directory(void) {
   ctest_config_init(&config);
   config.target_dir = "non_existent_directory_92817344";
 
-  char out_buf[CAPTURE_BUF_SIZE];
-  ctest_capture_stdout_start();
+  int saved_stderr = ctest_mute_output(STDERR_FILENO);
   int res = ctest_run_session(&config);
-  ctest_capture_stdout_end(out_buf, sizeof(out_buf));
+  ctest_unmute_output(saved_stderr, STDERR_FILENO);
 
   ASSERT_INT_EQ(res, -1,
                 "Runner should return -1 on discovery/directory error");
@@ -217,6 +216,57 @@ static void test_runner_verbose_session(void) {
   ctest_teardown_mock_dir(test_dir);
 }
 
+static void test_runner_json_export(void) {
+  const char *test_dir = "sandbox_runner_json_dir_99182311";
+  const char *bin_path = "sandbox_runner_json_dir_99182311/test_json_11223344";
+  const char *json_path = "sandbox_runner_json_dir_99182311/report.json";
+
+  ctest_setup_mock_dir(test_dir);
+  ctest_setup_mock_binary(bin_path,
+                          "#include <stdio.h>\n"
+                          "int main(void) {\n"
+                          "    printf(\"FAIL" CTEST_TEST_DELIM
+                          "test.c" CTEST_TEST_DELIM "10" CTEST_TEST_DELIM
+                          "x == y" CTEST_TEST_DELIM "Expected equality\\n\");\n"
+                          "    printf(\"SUMMARY" CTEST_TEST_DELIM
+                          "1" CTEST_TEST_DELIM "1" CTEST_TEST_DELIM "0\\n\");\n"
+                          "    return 0;\n"
+                          "}\n");
+
+  CTestConfig config;
+  ctest_config_init(&config);
+  config.target_dir = test_dir;
+  config.json_output_path = json_path;
+
+  char out_buf[CAPTURE_BUF_SIZE];
+  ctest_capture_stdout_start();
+  int status = ctest_run_session(&config);
+  ctest_capture_stdout_end(out_buf, sizeof(out_buf));
+
+  ASSERT_INT_EQ(status, 1, "Runner should return 1 when test failures occur");
+
+  FILE *f = fopen(json_path, "r");
+  ASSERT_PTR_NOT_NULL(f, "JSON output file should be created");
+
+  if (f != NULL) {
+    char json_buf[CAPTURE_BUF_SIZE];
+    size_t bytes_read = fread(json_buf, 1, sizeof(json_buf) - 1, f);
+    json_buf[bytes_read] = '\0';
+    fclose(f);
+    unlink(json_path);
+
+    ASSERT_PTR_NOT_NULL(strstr(json_buf, "\"summary\""),
+                        "JSON output should contain 'summary'");
+    ASSERT_PTR_NOT_NULL(strstr(json_buf, "\"failures\""),
+                        "JSON output should contain 'failures'");
+    ASSERT_PTR_NOT_NULL(strstr(json_buf, "Expected equality"),
+                        "JSON output should contain failure details");
+  }
+
+  ctest_teardown_mock_binary(bin_path);
+  ctest_teardown_mock_dir(test_dir);
+}
+
 int main(void) {
   printf("\nRunning: %s...\n", __FILE__);
 
@@ -227,6 +277,7 @@ int main(void) {
   test_runner_invalid_directory();
   test_runner_with_filter();
   test_runner_verbose_session();
+  test_runner_json_export();
 
   ctest_summary();
   return ctest_fail_count == 0 ? 0 : 1;

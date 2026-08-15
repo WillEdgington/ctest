@@ -3,6 +3,7 @@
 #include "discovery.h"
 #include "executor.h"
 #include "filter.h"
+#include "json.h"
 #include "reporter.h"
 #include "session.h"
 #include <clib/iter.h>
@@ -30,13 +31,17 @@ static void test_binaries_free(Vector *test_bin) {
 int ctest_run_session(const CTestConfig *config) {
   SessionMetrics session = {0};
   Vector ledger;
-  if (ledger_init(&ledger) == -1)
+  if (ledger_init(&ledger) == -1) {
+    fprintf(stderr, "ctest: failed to initialise failure ledger\n");
     return -1;
+  }
 
   ctest_report_start_banner(config->target_dir, config->verbosity);
 
   Vector *test_bins = ctest_discover_tests(config->target_dir);
   if (test_bins == NULL) {
+    fprintf(stderr, "ctest: failed to discover test binaries at %s\n",
+            config->target_dir);
     ledger_free(&ledger);
     return -1;
   }
@@ -58,9 +63,17 @@ int ctest_run_session(const CTestConfig *config) {
   test_binaries_free(test_bins);
 
   ctest_report_ledger(&ledger, config->verbosity);
-  ledger_free(&ledger);
-
   ctest_report_summary(&session, config->verbosity);
 
+  if (config->json_output_path != NULL) {
+    if (ctest_json_write(config->json_output_path, &session, &ledger) != 0) {
+      fprintf(stderr, "ctest: could no write JSON report to %s\n",
+              config->json_output_path);
+      ledger_free(&ledger);
+      return -1;
+    }
+  }
+
+  ledger_free(&ledger);
   return session_exit(&session);
 }

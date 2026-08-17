@@ -96,15 +96,21 @@ static void process_output_line(const char *line, SuiteMetrics *metrics,
   }
 }
 
-SuiteMetrics ctest_execute_suite(const char *binary_path,
-                                 unsigned int timeout_sec,
-                                 CTestVerbosity verbosity,
-                                 Vector *failure_ledger) {
-  SuiteMetrics metrics = {0};
+int ctest_launch_suite(const char *binary_path, CTestVerbosity verbosity,
+                       WorkerSlot *slot) {
   int pipefds[2];
   if (pipe(pipefds) == -1) {
     perror("ctest: pipe creation failed");
-    return metrics;
+    return -1;
+  }
+
+  // set pipefds to non-blocking
+  int flags = fcntl(pipefds[0], F_GETFL, 0);
+  if (fcntl(pipefds[0], F_SETFL, flags | O_NONBLOCK) == -1) {
+    perror("ctest: failed to set pipe fd to non-blocking");
+    close(pipefds[0]);
+    close(pipefds[1]);
+    return -1;
   }
 
   pid_t pid = fork();
@@ -112,17 +118,14 @@ SuiteMetrics ctest_execute_suite(const char *binary_path,
     perror("ctest: fork failed");
     close(pipefds[0]);
     close(pipefds[1]);
-    return metrics;
+    return -1;
   }
 
   if (pid == 0) {
     setpgid(0, 0);
-
     close(pipefds[0]);
-    if (dup2(pipefds[1], STDOUT_FILENO) == -1) {
-      perror("ctest: dup2 failed");
-      _exit(1);
-    }
+
+    dup2(pipefds[1], STDOUT_FILENO);
     close(pipefds[1]);
 
     setenv("CTEST_RUNNER", "1", 1);
@@ -133,117 +136,174 @@ SuiteMetrics ctest_execute_suite(const char *binary_path,
     execvp(binary_path, args);
     perror("ctest: execv failed");
     _exit(1);
-  } else {
-    close(pipefds[1]);
+  }
 
-    struct pollfd pfd = {.fd = pipefds[0], .events = POLLIN};
-    struct timespec start_time;
-    clock_gettime(CLOCK_MONOTONIC, &start_time);
+  close(pipefds[1]);
 
-    char line_buf[CTEST_MAX_LINE_LEN];
-    size_t buf_pos = 0;
-    int timed_out = 0;
+  slot->pid = pid;
+  slot->read_fd = pipefds[0];
+  slot->bin_path = binary_path;
+  slot->buf_pos = 0;
+  slot->is_active = 1;
+  slot->timed_out = 0;
+  clock_gettime(CLOCK_MONOTONIC, &slot->start_time);
+  return 0;
+}
 
-    while (1) {
-      int timeout_ms = -1; // block indefinitely (-1)
+int ctest_harvest_output(WorkerSlot *slot, CTestVerbosity verbosity,
+                         SuiteMetrics *metrics, Vector *failure_ledger) {
+  if (slot->is_active == 0 || slot->read_fd < 0)
+    return 0;
 
-      if (timeout_sec > 0) {
-        struct timespec now;
-        clock_gettime(CLOCK_MONOTONIC, &now);
-        long elapsed_ms = (now.tv_sec - start_time.tv_sec) * 1000L +
-                          (now.tv_nsec - start_time.tv_nsec) / 1000000L;
-        long remaining_ms = (long)(timeout_sec * 1000L) - elapsed_ms;
+  int total_bytes_read = 0;
+  char chunk[TMP_BUF_LEN];
 
-        if (remaining_ms <= 0) {
-          timed_out = 1;
-          break;
-        }
-        timeout_ms = (int)remaining_ms;
-      }
-
-      int poll_res = poll(&pfd, 1, timeout_ms);
-      if (poll_res < 0) {
-        if (errno == EINTR)
-          continue;
-        perror("ctest: poll failed");
-        break;
-      }
-      if (poll_res == 0) {
-        timed_out = 1;
-        break;
-      }
-
-      if (pfd.revents & POLLIN) {
-        char chunk[TMP_BUF_LEN];
-        ssize_t nbytes = read(pipefds[0], chunk, sizeof(chunk));
-        if (nbytes > 0) {
-          for (ssize_t i = 0; i < nbytes; i++) {
-            char c = chunk[i];
-            if (buf_pos < sizeof(line_buf) - 1) {
-              line_buf[buf_pos++] = c;
-            }
-            if (c == '\n') {
-              line_buf[buf_pos] = '\0';
-              process_output_line(line_buf, &metrics, failure_ledger,
-                                  verbosity);
-              buf_pos = 0;
-            }
+  while (1) {
+    ssize_t nbytes = read(slot->read_fd, chunk, sizeof(chunk));
+    if (nbytes > 0) {
+      total_bytes_read += nbytes;
+      for (ssize_t i = 0; i < nbytes; i++) {
+        char c = chunk[i];
+        if (slot->buf_pos < sizeof(slot->line_buf) - 1) {
+          slot->line_buf[slot->buf_pos++] = c;
+          if (c == '\n') {
+            slot->line_buf[slot->buf_pos] = '\0';
+            process_output_line(slot->line_buf, metrics, failure_ledger,
+                                verbosity);
+            slot->buf_pos = 0;
           }
-        } else if (nbytes == 0) {
-          break;
-        } else {
-          if (errno == EAGAIN || errno == EWOULDBLOCK)
-            continue;
-          break;
         }
-      } else if (pfd.revents & (POLLHUP | POLLERR)) {
-        break;
       }
-    }
-
-    if (buf_pos > 0) {
-      line_buf[buf_pos] = '\0';
-      process_output_line(line_buf, &metrics, failure_ledger, verbosity);
-    }
-
-    close(pipefds[0]);
-
-    if (timed_out == 1) {
-      metrics.state = SUITE_TIMEOUT;
-      kill(-pid, SIGKILL);
-
-      char timeout_msg[CTEST_MAX_LINE_LEN];
-      snprintf(timeout_msg, sizeof(timeout_msg),
-               "  " CTEST_COLOR_CYAN "[TIME]" CTEST_COLOR_RESET
-               " Suite execution timed out\n"
-               "         Limit     : Exceeded %u second(s) threshold\n"
-               "         Location  : %s\n",
-               timeout_sec, binary_path);
-
-      if (vector_push(failure_ledger, timeout_msg) == -1)
-        fprintf(stderr, "ctest: failed to push to the failure ledger\n");
-
-      int status;
-      waitpid(pid, &status, 0);
+    } else if (nbytes == 0) {
+      // EOF reached
+      return (total_bytes_read > 0) ? total_bytes_read : 0;
     } else {
-      int status;
-      waitpid(pid, &status, 0);
-
-      if (WIFSIGNALED(status)) {
-        metrics.state = SUITE_CRASH;
-
-        char crash_msg[CTEST_MAX_LINE_LEN];
-        snprintf(crash_msg, sizeof(crash_msg),
-                 "  " CTEST_COLOR_YELLOW "[CRASH]" CTEST_COLOR_RESET
-                 " Suite execution terminated unexpectedly\n"
-                 "         Signal    : Terminated by signal %d\n"
-                 "         Location  : %s\n",
-                 WTERMSIG(status), binary_path);
-        if (vector_push(failure_ledger, crash_msg) == -1)
-          fprintf(stderr, "ctest: failed to push to the failure ledger\n");
+      if (errno == EAGAIN || errno == EWOULDBLOCK) {
+        // no more data currently available in buffer
+        return (total_bytes_read > 0) ? total_bytes_read : -1;
       }
+      return -1; // read error
+    }
+  }
+}
+
+int ctest_finalise_suite(WorkerSlot *slot, unsigned int timeout_sec,
+                         CTestVerbosity verbosity, SuiteMetrics *out_metrics,
+                         Vector *failure_ledger) {
+  if (slot->is_active == 0)
+    return 0;
+
+  if (slot->buf_pos > 0) {
+    slot->line_buf[slot->buf_pos] = '\0';
+    process_output_line(slot->line_buf, out_metrics, failure_ledger, verbosity);
+    slot->buf_pos = 0;
+  }
+
+  if (slot->read_fd >= 0) {
+    close(slot->read_fd);
+    slot->read_fd = -1;
+  }
+
+  struct timespec now;
+  clock_gettime(CLOCK_MONOTONIC, &now);
+  unsigned int elapsed_sec =
+      (unsigned int)(now.tv_sec - slot->start_time.tv_sec);
+  if ((timeout_sec > 0 && elapsed_sec >= timeout_sec) || slot->timed_out)
+    slot->timed_out = 1;
+
+  if (slot->timed_out == 1) {
+    // format timeout
+    out_metrics->state = SUITE_TIMEOUT;
+    kill(-slot->pid, SIGKILL);
+
+    char timeout_msg[CTEST_MAX_LINE_LEN];
+    snprintf(timeout_msg, sizeof(timeout_msg),
+             "  " CTEST_COLOR_CYAN "[TIME]" CTEST_COLOR_RESET
+             " Suite execution timed out\n"
+             "         Limit     : Exceeded %u second(s) threshold\n"
+             "         Location  : %s\n",
+             timeout_sec, slot->bin_path);
+
+    if (vector_push(failure_ledger, timeout_msg) == -1)
+      fprintf(stderr, "ctest: failed to push to the failure ledger\n");
+
+    int status;
+    waitpid(slot->pid, &status, 0);
+  } else {
+    // wait for child process to finish
+    int status;
+    waitpid(slot->pid, &status, 0);
+    if (WIFSIGNALED(status)) {
+      // format crash
+      out_metrics->state = SUITE_CRASH;
+
+      char crash_msg[CTEST_MAX_LINE_LEN];
+      snprintf(crash_msg, sizeof(crash_msg),
+               "  " CTEST_COLOR_YELLOW "[CRASH]" CTEST_COLOR_RESET
+               " Suite execution terminated unexpectedly\n"
+               "         Signal    : Terminated by signal %d\n"
+               "         Location  : %s\n",
+               WTERMSIG(status), slot->bin_path);
+      if (vector_push(failure_ledger, crash_msg) == -1)
+        fprintf(stderr, "ctest: failed to push to the failure ledger\n");
     }
   }
 
+  slot->is_active = 0;
+  return 0;
+}
+
+SuiteMetrics ctest_execute_suite(const char *binary_path,
+                                 unsigned int timeout_sec,
+                                 CTestVerbosity verbosity,
+                                 Vector *failure_ledger) {
+  SuiteMetrics metrics = {0};
+  WorkerSlot slot = {0};
+
+  if (ctest_launch_suite(binary_path, verbosity, &slot) != 0)
+    return metrics;
+
+  struct pollfd pfd = {.fd = slot.read_fd, .events = POLLIN};
+  struct timespec now;
+
+  while (slot.is_active) {
+    int poll_timeout = -1; // infinite wait by default if timeout_sec == 0
+
+    if (timeout_sec > 0) {
+      clock_gettime(CLOCK_MONOTONIC, &now);
+      long elapsed_ms = (now.tv_sec - slot.start_time.tv_sec) * 1000L +
+                        (now.tv_nsec - slot.start_time.tv_nsec) / 1000000L;
+      long remaining_ms = (long)(timeout_sec * 1000L) - elapsed_ms;
+
+      if (remaining_ms <= 0) {
+        slot.timed_out = 1;
+        break;
+      }
+      poll_timeout = (int)remaining_ms;
+    }
+
+    int poll_res = poll(&pfd, 1, poll_timeout);
+
+    if (poll_res < 0) {
+      if (errno == EINTR)
+        continue;
+      break;
+    }
+
+    if (poll_res == 0) {
+      slot.timed_out = 1;
+      break;
+    }
+
+    // process events when POLLIN, POLLHUP, or POLLERR occur
+    if (pfd.revents & (POLLIN | POLLHUP | POLLERR)) {
+      int bytes =
+          ctest_harvest_output(&slot, verbosity, &metrics, failure_ledger);
+      if (bytes == 0) // EOF confirmed
+        break;
+    }
+  }
+
+  ctest_finalise_suite(&slot, timeout_sec, verbosity, &metrics, failure_ledger);
   return metrics;
 }

@@ -4,6 +4,7 @@
 #include "executor.h"
 #include "filter.h"
 #include "json.h"
+#include "pool.h"
 #include "reporter.h"
 #include "session.h"
 #include <clib/iter.h>
@@ -46,20 +47,12 @@ int ctest_run_session(const CTestConfig *config) {
     return -1;
   }
 
-  Iter it = vector_iter(test_bins);
-  while (it.next(&it) == 0) {
-    const char *bin_path = it.current.value;
-    if (ctest_filter_matches(bin_path, config->filter_pattern) == 0)
-      continue;
-
-    ctest_report_suite_start(bin_path, config->verbosity);
-
-    SuiteMetrics metrics = ctest_execute_suite(bin_path, config->timeout_sec,
-                                               config->verbosity, &ledger);
-
-    ctest_report_suite_metrics(bin_path, &metrics, config->verbosity);
-    ctest_update_session(&session, &metrics);
+  if (ctest_pool_run(test_bins, config, &session, &ledger) != 0) {
+    ledger_free(&ledger);
+    test_binaries_free(test_bins);
+    return -1;
   }
+
   test_binaries_free(test_bins);
 
   ctest_report_ledger(&ledger, config->verbosity);

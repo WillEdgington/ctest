@@ -267,6 +267,52 @@ static void test_runner_json_export(void) {
   ctest_teardown_mock_dir(test_dir);
 }
 
+static void test_runner_concurrent_jobs(void) {
+  const char *test_dir = "sandbox_runner_jobs_dir_33445566";
+  const char *bin_a = "sandbox_runner_jobs_dir_33445566/test_suite_a";
+  const char *bin_b = "sandbox_runner_jobs_dir_33445566/test_suite_b";
+  const char *bin_c = "sandbox_runner_jobs_dir_33445566/test_suite_c";
+  const char *bin_d = "sandbox_runner_jobs_dir_33445566/test_suite_d";
+
+  ctest_setup_mock_dir(test_dir);
+
+  const char *mock_code = "#include <stdio.h>\n"
+                          "int main(void) {\n"
+                          "    printf(\"SUMMARY" CTEST_TEST_DELIM
+                          "1" CTEST_TEST_DELIM "0" CTEST_TEST_DELIM "0\\n\");\n"
+                          "    return 0;\n"
+                          "}\n";
+
+  ctest_setup_mock_binary(bin_a, mock_code);
+  ctest_setup_mock_binary(bin_b, mock_code);
+  ctest_setup_mock_binary(bin_c, mock_code);
+  ctest_setup_mock_binary(bin_d, mock_code);
+
+  CTestConfig config;
+  ctest_config_init(&config);
+  config.target_dir = test_dir;
+  config.jobs = 4;
+
+  char out_buf[CAPTURE_BUF_SIZE];
+  ctest_capture_stdout_start();
+  int status = ctest_run_session(&config);
+  ctest_capture_stdout_end(out_buf, sizeof(out_buf));
+
+  ASSERT_INT_EQ(status, 0,
+                "Runner should return 0 when all concurrent suites pass");
+  ASSERT(strstr(out_buf, "test_suite_a") != NULL &&
+             strstr(out_buf, "test_suite_b") != NULL &&
+             strstr(out_buf, "test_suite_c") != NULL &&
+             strstr(out_buf, "test_suite_d") != NULL,
+         "Output should contain all test suite bin names");
+
+  ctest_teardown_mock_binary(bin_a);
+  ctest_teardown_mock_binary(bin_b);
+  ctest_teardown_mock_binary(bin_c);
+  ctest_teardown_mock_binary(bin_d);
+  ctest_teardown_mock_dir(test_dir);
+}
+
 int main(void) {
   printf("\nRunning: %s...\n", __FILE__);
 
@@ -278,6 +324,7 @@ int main(void) {
   test_runner_with_filter();
   test_runner_verbose_session();
   test_runner_json_export();
+  test_runner_concurrent_jobs();
 
   ctest_summary();
   return ctest_fail_count == 0 ? 0 : 1;

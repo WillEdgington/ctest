@@ -13,7 +13,7 @@ typedef struct {
   CTestFn fn;
 } TestCase;
 
-typedef struct {
+typedef struct CTestRegistry {
   Vector cases;
   bool initialised;
 } CTestRegistry;

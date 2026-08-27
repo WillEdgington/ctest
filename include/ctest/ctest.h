@@ -98,6 +98,29 @@ void ctest_report_result(bool passed, const char *file, int line,
     ctest_report_result(passed, __FILE__, __LINE__, #ptr " == NULL", message); \
   } while (0)
 
+// expose necessary internal implementation details of registry module (for use
+// by macros)
+typedef struct CTestRegistry CTestRegistry;
+typedef void (*CTestFn)(void);
+CTestRegistry *ctest_get_global_registry(void);
+void ctest_registry_add(CTestRegistry *reg, const char *suite_name,
+                        const char *test_name, CTestFn fn);
+
+// intermediary macro needed so potential input macros can be evaluated
+#define CTEST_CONCAT_IMPL(a, b, c) a##_##b##_##c
+#define CTEST_CONCAT(a, b, c) CTEST_CONCAT_IMPL(a, b, c)
+
+// define test case method interface, add test case to global reg before main(),
+// define test case method fully
+#define CTEST(suite, name)                                                     \
+  static void CTEST_CONCAT(ctest_fn, suite, name)(void);                       \
+  __attribute__((constructor)) static void CTEST_CONCAT(ctest_init, suite,     \
+                                                        name)(void) {          \
+    ctest_registry_add(ctest_get_global_registry(), #suite, #name,             \
+                       CTEST_CONCAT(ctest_fn, suite, name));                   \
+  }                                                                            \
+  static void CTEST_CONCAT(ctest_fn, suite, name)(void)
+
 void ctest_summary(void);
 
 int ctest_mute_output(int std_stream_flag);

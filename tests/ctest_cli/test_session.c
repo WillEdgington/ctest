@@ -2,7 +2,9 @@
 #include "ctest_cli/session.h"
 #include <ctest/ctest.h>
 
-void test_update_session(void) {
+#define SUITE_NAME test_session
+
+CTEST(SUITE_NAME, test_update_session) {
   size_t n_suites = 2;
   size_t n_runs = 7;
   size_t n_crashes = 1;
@@ -43,13 +45,4 @@ void test_update_session(void) {
 
   ASSERT_INT_EQ(session.total_timeouts - n_timeouts, 1,
                 "Total timeouts should increment by 1 if suite timed out");
-}
-
-int main(void) {
-  printf("\nRunning: %s...\n", __FILE__);
-
-  test_update_session();
-
-  ctest_summary();
-  return ctest_fail_count == 0 ? 0 : 1;
 }

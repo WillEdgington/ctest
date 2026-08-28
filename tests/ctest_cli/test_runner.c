@@ -3,9 +3,11 @@
 #include <ctest/ctest.h>
 #include <stdio.h>
 
+#define SUITE_NAME test_runner
+
 static int CAPTURE_BUF_SIZE = 2048;
 
-static void test_runner_all_passed(void) {
+CTEST(SUITE_NAME, test_runner_all_passed) {
   const char *test_dir = "sandbox_runner_pass_dir_47383244";
   const char *bin_path = "sandbox_runner_pass_dir_47383244/test_pass_89454444";
 
@@ -31,7 +33,7 @@ static void test_runner_all_passed(void) {
   ctest_teardown_mock_dir(test_dir);
 }
 
-static void test_runner_with_failures(void) {
+CTEST(SUITE_NAME, test_runner_with_failures) {
   const char *test_dir = "sandbox_runner_fail_dir_86946555";
   const char *bin_path = "sandbox_runner_fail_dir_86946555/test_fail_95035553";
 
@@ -62,7 +64,7 @@ static void test_runner_with_failures(void) {
   ctest_teardown_mock_dir(test_dir);
 }
 
-static void test_runner_with_crash(void) {
+CTEST(SUITE_NAME, test_runner_with_crash) {
   const char *test_dir = "sandbox_runner_crash_dir_09586433";
   const char *bin_path =
       "sandbox_runner_crash_dir_09586433/test_crash_11195300";
@@ -93,7 +95,7 @@ static void test_runner_with_crash(void) {
 // same as the test_executor test for the timeout feature, it would be good to
 // find a different way to test this current approach sleeps for a second, would
 // be great if it didn't
-static void test_runner_with_timeout(void) {
+CTEST(SUITE_NAME, test_runner_with_timeout) {
   const char *test_dir = "sandbox_runner_timeout_dir_77112233";
   const char *bin_path =
       "sandbox_runner_timeout_dir_77112233/test_timeout_88223344";
@@ -121,7 +123,7 @@ static void test_runner_with_timeout(void) {
   ctest_teardown_mock_dir(test_dir);
 }
 
-static void test_runner_invalid_directory(void) {
+CTEST(SUITE_NAME, test_runner_invalid_directory) {
   CTestConfig config;
   ctest_config_init(&config);
   config.target_dir = "non_existent_directory_92817344";
@@ -134,7 +136,7 @@ static void test_runner_invalid_directory(void) {
                 "Runner should return -1 on discovery/directory error");
 }
 
-static void test_runner_with_filter(void) {
+CTEST(SUITE_NAME, test_runner_with_filter) {
   const char *test_dir = "sandbox_runner_filter_dir_55443322";
   const char *bin_pass =
       "sandbox_runner_filter_dir_55443322/test_apple_11223344";
@@ -185,7 +187,7 @@ static void test_runner_with_filter(void) {
   ctest_teardown_mock_dir(test_dir);
 }
 
-static void test_runner_verbose_session(void) {
+CTEST(SUITE_NAME, test_runner_verbose_session) {
   const char *test_dir = "sandbox_runner_verbose_dir_11223344";
   const char *bin_path =
       "sandbox_runner_verbose_dir_11223344/test_verb_55667788";
@@ -216,7 +218,7 @@ static void test_runner_verbose_session(void) {
   ctest_teardown_mock_dir(test_dir);
 }
 
-static void test_runner_json_export(void) {
+CTEST(SUITE_NAME, test_runner_json_export) {
   const char *test_dir = "sandbox_runner_json_dir_99182311";
   const char *bin_path = "sandbox_runner_json_dir_99182311/test_json_11223344";
   const char *json_path = "sandbox_runner_json_dir_99182311/report.json";
@@ -267,7 +269,7 @@ static void test_runner_json_export(void) {
   ctest_teardown_mock_dir(test_dir);
 }
 
-static void test_runner_concurrent_jobs(void) {
+CTEST(SUITE_NAME, test_runner_concurrent_jobs) {
   const char *test_dir = "sandbox_runner_jobs_dir_33445566";
   const char *bin_a = "sandbox_runner_jobs_dir_33445566/test_suite_a";
   const char *bin_b = "sandbox_runner_jobs_dir_33445566/test_suite_b";
@@ -311,21 +313,4 @@ static void test_runner_concurrent_jobs(void) {
   ctest_teardown_mock_binary(bin_c);
   ctest_teardown_mock_binary(bin_d);
   ctest_teardown_mock_dir(test_dir);
-}
-
-int main(void) {
-  printf("\nRunning: %s...\n", __FILE__);
-
-  test_runner_all_passed();
-  test_runner_with_failures();
-  test_runner_with_crash();
-  test_runner_with_timeout();
-  test_runner_invalid_directory();
-  test_runner_with_filter();
-  test_runner_verbose_session();
-  test_runner_json_export();
-  test_runner_concurrent_jobs();
-
-  ctest_summary();
-  return ctest_fail_count == 0 ? 0 : 1;
 }

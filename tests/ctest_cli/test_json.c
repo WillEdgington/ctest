@@ -6,9 +6,11 @@
 #include <stdio.h>
 #include <stdlib.h>
 
+#define SUITE_NAME test_json
+
 static int FILE_BUF_LEN = 4096;
 
-static void test_json_write_null_args(void) {
+CTEST(SUITE_NAME, test_json_write_null_args) {
   SessionMetrics metrics = {0};
   Vector ledger;
   vector_init(&ledger, CTEST_MAX_FAIL_LINE_LEN);
@@ -20,7 +22,7 @@ static void test_json_write_null_args(void) {
   vector_free(&ledger);
 }
 
-static void test_json_write_invalid_filepath(void) {
+CTEST(SUITE_NAME, test_json_write_invalid_filepath) {
   SessionMetrics metrics = {0};
   Vector ledger;
   vector_init(&ledger, CTEST_MAX_FAIL_LINE_LEN);
@@ -33,7 +35,7 @@ static void test_json_write_invalid_filepath(void) {
   vector_free(&ledger);
 }
 
-static void test_json_write_valid_report(void) {
+CTEST(SUITE_NAME, test_json_write_valid_report) {
   const char *test_path = "sandbox_test_report_14437587.json";
 
   SessionMetrics metrics = {.total_suites = 2,
@@ -91,15 +93,4 @@ static void test_json_write_valid_report(void) {
   }
 
   vector_free(&ledger);
-}
-
-int main(void) {
-  printf("\nRunning: %s...\n", __FILE__);
-
-  test_json_write_null_args();
-  test_json_write_invalid_filepath();
-  test_json_write_valid_report();
-
-  ctest_summary();
-  return ctest_fail_count == 0 ? 0 : 1;
 }

@@ -1,7 +1,9 @@
 #include "ctest_cli/filter.h"
 #include <ctest/ctest.h>
 
-static void test_filter_null_patterns(void) {
+#define SUITE_NAME test_filter
+
+CTEST(SUITE_NAME, test_filter_null_patterns) {
   ASSERT_INT_EQ(ctest_filter_matches("fake/path", NULL), 1,
                 "When pattern is NULL, filter should return 1 (match)");
   ASSERT_INT_EQ(
@@ -9,7 +11,7 @@ static void test_filter_null_patterns(void) {
       "When pattern is an empty string, filter should return 1 (match)");
 }
 
-static void test_filter_non_glob_patterns(void) {
+CTEST(SUITE_NAME, test_filter_non_glob_patterns) {
   ASSERT_INT_EQ(ctest_filter_matches("tests/ctest_cli/test_filter", "tests/"),
                 1,
                 "Filter should recognise an explicit prefix match (return 1) "
@@ -31,7 +33,7 @@ static void test_filter_non_glob_patterns(void) {
       "sub-string of the target path");
 }
 
-static void test_filter_glob_patterns(void) {
+CTEST(SUITE_NAME, test_filter_glob_patterns) {
   // Asterisk (*) wildcard - matches zero or more characters
   ASSERT_INT_EQ(
       ctest_filter_matches("tests/ctest_cli/test_filter", "*test_filter"), 1,
@@ -79,15 +81,4 @@ static void test_filter_glob_patterns(void) {
       0,
       "Filter should return 0 (no match) when character does not fall within "
       "bracket range [0-9]");
-}
-
-int main(void) {
-  printf("\nRunning: %s...\n", __FILE__);
-
-  test_filter_null_patterns();
-  test_filter_non_glob_patterns();
-  test_filter_glob_patterns();
-
-  ctest_summary();
-  return ctest_fail_count == 0 ? 0 : 1;
 }

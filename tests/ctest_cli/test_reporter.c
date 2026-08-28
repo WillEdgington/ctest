@@ -4,10 +4,12 @@
 #include <ctest/ctest.h>
 #include <string.h>
 
+#define SUITE_NAME test_reporter
+
 #define CAPTURE_BUF_SIZE 2048
 #define LEDGER_ITEM_SIZE 256
 
-static void test_report_start_banner_normal(void) {
+CTEST(SUITE_NAME, test_report_start_banner_normal) {
   const char *root_dir = "tests/fixtures";
   char out_buf[CAPTURE_BUF_SIZE];
 
@@ -22,7 +24,7 @@ static void test_report_start_banner_normal(void) {
       "Start banner should include horizontal margins in NORMAL mode");
 }
 
-static void test_report_start_banner_quiet(void) {
+CTEST(SUITE_NAME, test_report_start_banner_quiet) {
   const char *root_dir = "tests/fixtures";
   char out_buf[CAPTURE_BUF_SIZE];
 
@@ -34,12 +36,7 @@ static void test_report_start_banner_quiet(void) {
          "Start banner should produce no output in QUIET mode");
 }
 
-static void test_report_start_banner(void) {
-  test_report_start_banner_normal();
-  test_report_start_banner_quiet();
-}
-
-void test_reporter_verbose_suite_start(void) {
+CTEST(SUITE_NAME, test_reporter_verbose_suite_start) {
   char out_buf[CAPTURE_BUF_SIZE];
 
   ctest_capture_stdout_start();
@@ -57,7 +54,7 @@ void test_reporter_verbose_suite_start(void) {
   ASSERT(out_buf[0] == '\0', "Normal suite start produces no banner output");
 }
 
-static void test_report_suite_metrics_pass(void) {
+CTEST(SUITE_NAME, test_report_suite_metrics_pass) {
   const char *bin_path = "tests/fake_passing_test";
   SuiteMetrics metrics = {
       .total_runs = 6, .total_failures = 0, .state = SUITE_DEFAULT};
@@ -73,7 +70,7 @@ static void test_report_suite_metrics_pass(void) {
                       "Passed suite output should contain binary path");
 }
 
-static void test_report_suite_metrics_fail(void) {
+CTEST(SUITE_NAME, test_report_suite_metrics_fail) {
   const char *bin_path = "tests/fake_failing_test";
   SuiteMetrics metrics = {
       .total_runs = 6, .total_failures = 2, .state = SUITE_DEFAULT};
@@ -89,7 +86,7 @@ static void test_report_suite_metrics_fail(void) {
                       "Failed suite output should contain binary path");
 }
 
-static void test_report_suite_metrics_crash(void) {
+CTEST(SUITE_NAME, test_report_suite_metrics_crash) {
   const char *bin_path = "tests/fake_crashing_test";
   SuiteMetrics metrics = {
       .total_runs = 6, .total_failures = 3, .state = SUITE_CRASH};
@@ -105,7 +102,7 @@ static void test_report_suite_metrics_crash(void) {
                       "Crashed suite output should contain binary path");
 }
 
-static void test_report_suite_metrics_timeout(void) {
+CTEST(SUITE_NAME, test_report_suite_metrics_timeout) {
   const char *bin_path = "tests/fake_timeout_test";
   SuiteMetrics metrics = {
       .total_runs = 2, .total_failures = 0, .state = SUITE_TIMEOUT};
@@ -121,7 +118,7 @@ static void test_report_suite_metrics_timeout(void) {
                       "Timed out suite output should contain binary path");
 }
 
-static void test_report_suite_metrics_quiet(void) {
+CTEST(SUITE_NAME, test_report_suite_metrics_quiet) {
   const char *bin_path = "tests/fake_passing_test";
   SuiteMetrics metrics = {
       .total_runs = 6, .total_failures = 0, .state = SUITE_DEFAULT};
@@ -135,15 +132,7 @@ static void test_report_suite_metrics_quiet(void) {
          "Suite metrics should produce no output in QUIET mode");
 }
 
-static void test_report_suite_metrics(void) {
-  test_report_suite_metrics_pass();
-  test_report_suite_metrics_fail();
-  test_report_suite_metrics_crash();
-  test_report_suite_metrics_timeout();
-  test_report_suite_metrics_quiet();
-}
-
-static void test_report_ledger_normal(void) {
+CTEST(SUITE_NAME, test_report_ledger_normal) {
   Vector ledger;
   vector_init(&ledger, LEDGER_ITEM_SIZE);
 
@@ -178,7 +167,7 @@ static void test_report_ledger_normal(void) {
   vector_free(&ledger);
 }
 
-static void test_report_ledger_quiet(void) {
+CTEST(SUITE_NAME, test_report_ledger_quiet) {
   Vector ledger;
   vector_init(&ledger, LEDGER_ITEM_SIZE);
 
@@ -203,7 +192,7 @@ static void test_report_ledger_quiet(void) {
   vector_free(&ledger);
 }
 
-static void test_report_ledger_empty(void) {
+CTEST(SUITE_NAME, test_report_ledger_empty) {
   Vector ledger;
   vector_init(&ledger, LEDGER_ITEM_SIZE);
 
@@ -217,13 +206,7 @@ static void test_report_ledger_empty(void) {
   vector_free(&ledger);
 }
 
-static void test_report_ledger(void) {
-  test_report_ledger_normal();
-  test_report_ledger_quiet();
-  test_report_ledger_empty();
-}
-
-static void test_report_summary_all_passed(void) {
+CTEST(SUITE_NAME, test_report_summary_all_passed) {
   SessionMetrics session = {.total_suites = 3,
                             .total_runs = 15,
                             .total_failures = 0,
@@ -243,7 +226,7 @@ static void test_report_summary_all_passed(void) {
                       "NORMAL mode summary should include horizontal margins");
 }
 
-static void test_report_summary_with_failures(void) {
+CTEST(SUITE_NAME, test_report_summary_with_failures) {
   SessionMetrics session = {.total_suites = 5,
                             .total_runs = 20,
                             .total_failures = 3,
@@ -273,7 +256,7 @@ static void test_report_summary_with_failures(void) {
                       "NORMAL mode summary should include horizontal margins");
 }
 
-static void test_report_summary_quiet_all_passed(void) {
+CTEST(SUITE_NAME, test_report_summary_quiet_all_passed) {
   SessionMetrics session = {.total_suites = 3,
                             .total_runs = 15,
                             .total_failures = 0,
@@ -294,7 +277,7 @@ static void test_report_summary_quiet_all_passed(void) {
                   "Quiet summary should omit horizontal margin characters");
 }
 
-static void test_report_summary_quiet_with_failures(void) {
+CTEST(SUITE_NAME, test_report_summary_quiet_with_failures) {
   SessionMetrics session = {.total_suites = 5,
                             .total_runs = 20,
                             .total_failures = 3,
@@ -312,23 +295,4 @@ static void test_report_summary_quiet_with_failures(void) {
                       "Quiet summary should contain FAILED metric label");
   ASSERT_PTR_NULL(strstr(out_buf, "====\n"),
                   "Quiet summary should omit horizontal margin characters");
-}
-
-static void test_report_summary(void) {
-  test_report_summary_all_passed();
-  test_report_summary_with_failures();
-  test_report_summary_quiet_all_passed();
-  test_report_summary_quiet_with_failures();
-}
-
-int main(void) {
-  printf("\nRunning: %s...\n", __FILE__);
-
-  test_report_start_banner();
-  test_report_suite_metrics();
-  test_report_ledger();
-  test_report_summary();
-
-  ctest_summary();
-  return ctest_fail_count == 0 ? 0 : 1;
 }

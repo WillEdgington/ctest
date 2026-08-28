@@ -9,6 +9,8 @@
 #include <sys/stat.h>
 #include <unistd.h>
 
+#define SUITE_NAME test_executor
+
 static size_t CAPTURE_BUF_SIZE = 2048;
 
 static const char *mock_passing_bin = "./mock_passing_bin_35893333";
@@ -16,7 +18,7 @@ static const char *mock_failing_bin = "./mock_failing_bin_78677545";
 static const char *mock_crashing_bin = "./mock_crashing_bin_48691321";
 static const char *mock_timeout_bin = "./mock_timeout_bin_99182736";
 
-static void test_executor_passing_suite(void) {
+CTEST(SUITE_NAME, test_executor_passing_suite) {
   ctest_setup_mock_binary(mock_passing_bin,
                           "#include <stdio.h>\n"
                           "int main(void) {\n"
@@ -42,7 +44,7 @@ static void test_executor_passing_suite(void) {
   ctest_teardown_mock_binary(mock_passing_bin);
 }
 
-static void test_executor_failing_suite(void) {
+CTEST(SUITE_NAME, test_executor_failing_suite) {
   ctest_setup_mock_binary(
       mock_failing_bin,
       "#include <stdio.h>\n"
@@ -78,7 +80,7 @@ static void test_executor_failing_suite(void) {
   ctest_teardown_mock_binary(mock_failing_bin);
 }
 
-static void test_executor_crashing_suite(void) {
+CTEST(SUITE_NAME, test_executor_crashing_suite) {
   ctest_setup_mock_binary(mock_crashing_bin,
                           "#include <stdlib.h>\n"
                           "int main(void) {\n"
@@ -106,7 +108,7 @@ static void test_executor_crashing_suite(void) {
 
 // This test seems like it could be done better, but validates well enough for
 // now. Need to find a way that it can be done without sleeping for so long.
-static void test_executor_timeout_suite(void) {
+CTEST(SUITE_NAME, test_executor_timeout_suite) {
   ctest_setup_mock_binary(mock_timeout_bin, "#include <unistd.h>\n"
                                             "int main(void) {\n"
                                             "  usleep(1100000);\n"
@@ -130,7 +132,7 @@ static void test_executor_timeout_suite(void) {
   ctest_teardown_mock_binary(mock_timeout_bin);
 }
 
-static void test_executor_verbose_passing_suite(void) {
+CTEST(SUITE_NAME, test_executor_verbose_passing_suite) {
   ctest_setup_mock_binary(
       mock_passing_bin,
       "#include <stdio.h>\n"
@@ -160,7 +162,7 @@ static void test_executor_verbose_passing_suite(void) {
   ctest_teardown_mock_binary(mock_passing_bin);
 }
 
-static void test_executor_async_primitives_passing(void) {
+CTEST(SUITE_NAME, test_executor_async_primitives_passing) {
   ctest_setup_mock_binary(mock_passing_bin,
                           "#include <stdio.h>\n"
                           "int main(void) {\n"
@@ -197,7 +199,7 @@ static void test_executor_async_primitives_passing(void) {
   ctest_teardown_mock_binary(mock_passing_bin);
 }
 
-static void test_executor_async_primitives_timeout(void) {
+CTEST(SUITE_NAME, test_executor_async_primitives_timeout) {
   ctest_setup_mock_binary(mock_timeout_bin, "#include <unistd.h>\n"
                                             "int main(void) {\n"
                                             "  usleep(500000);\n"
@@ -224,19 +226,4 @@ static void test_executor_async_primitives_timeout(void) {
 
   vector_free(&ledger);
   ctest_teardown_mock_binary(mock_timeout_bin);
-}
-
-int main(void) {
-  printf("\nRunning: %s...\n", __FILE__);
-
-  test_executor_passing_suite();
-  test_executor_failing_suite();
-  test_executor_crashing_suite();
-  test_executor_timeout_suite();
-  test_executor_verbose_passing_suite();
-  test_executor_async_primitives_passing();
-  test_executor_async_primitives_timeout();
-
-  ctest_summary();
-  return ctest_fail_count == 0 ? 0 : 1;
 }

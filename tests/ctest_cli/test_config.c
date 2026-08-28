@@ -1,7 +1,9 @@
 #include "ctest_cli/config.h"
 #include <ctest/ctest.h>
 
-static void test_config_init_defaults(void) {
+#define SUITE_NAME test_config
+
+CTEST(SUITE_NAME, test_config_init_defaults) {
   CTestConfig config;
   ctest_config_init(&config);
 
@@ -19,7 +21,7 @@ static void test_config_init_defaults(void) {
                   "Default json output path configuration should be NULL");
 }
 
-static void test_parse_default_args(void) {
+CTEST(SUITE_NAME, test_parse_default_args) {
   CTestConfig config;
   ctest_config_init(&config);
 
@@ -34,7 +36,7 @@ static void test_parse_default_args(void) {
                 "directory ('./tests') configurations");
 }
 
-static void test_parse_custom_directory(void) {
+CTEST(SUITE_NAME, test_parse_custom_directory) {
   CTestConfig config;
   ctest_config_init(&config);
 
@@ -48,7 +50,7 @@ static void test_parse_custom_directory(void) {
                 "directory configuration");
 }
 
-static void test_parse_valid_flags(void) {
+CTEST(SUITE_NAME, test_parse_valid_flags) {
   CTestConfig config;
   ctest_config_init(&config);
 
@@ -87,7 +89,7 @@ static void test_parse_valid_flags(void) {
                 "(CTEST_VERBOSITY_QUIET)");
 }
 
-static void test_parse_help_flag(void) {
+CTEST(SUITE_NAME, test_parse_help_flag) {
   CTestConfig config;
   ctest_config_init(&config);
 
@@ -103,7 +105,7 @@ static void test_parse_help_flag(void) {
       "Parsed help flag should signal that help was requested (status 1)");
 }
 
-static void test_parse_invalid_flag(void) {
+CTEST(SUITE_NAME, test_parse_invalid_flag) {
   CTestConfig config;
   ctest_config_init(&config);
 
@@ -117,7 +119,7 @@ static void test_parse_invalid_flag(void) {
   ASSERT_INT_EQ(status, -1, "Parsed invalid flag should error (return -1)");
 }
 
-static void test_parse_extra_positional_args(void) {
+CTEST(SUITE_NAME, test_parse_extra_positional_args) {
   CTestConfig config;
   ctest_config_init(&config);
 
@@ -132,7 +134,7 @@ static void test_parse_extra_positional_args(void) {
                 "Parsed extra positional arg should error (return -1)");
 }
 
-static void test_parse_missing_option_arg(void) {
+CTEST(SUITE_NAME, test_parse_missing_option_arg) {
   CTestConfig config;
   ctest_config_init(&config);
 
@@ -145,20 +147,4 @@ static void test_parse_missing_option_arg(void) {
 
   ASSERT_INT_EQ(status, -1,
                 "Parsed flag with missing value should error (return -1)");
-}
-
-int main(void) {
-  printf("\nRunning: %s...", __FILE__);
-
-  test_config_init_defaults();
-  test_parse_default_args();
-  test_parse_custom_directory();
-  test_parse_valid_flags();
-  test_parse_help_flag();
-  test_parse_invalid_flag();
-  test_parse_extra_positional_args();
-  test_parse_missing_option_arg();
-
-  ctest_summary();
-  return ctest_fail_count == 0 ? 0 : 1;
 }

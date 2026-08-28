@@ -3,9 +3,11 @@
 #include <stdio.h>
 #include <stdlib.h>
 
+#define SUITE_NAME test_libctest
+
 static size_t BUF_SIZE = 128;
 
-void test_basic_assertions(void) {
+CTEST(SUITE_NAME, test_basic_assertions) {
   ASSERT(1 == 1, "One should equal one");
   ASSERT(5 > 3, "Five should be greater than three");
 
@@ -24,7 +26,7 @@ void test_basic_assertions(void) {
                    "Double matching within epsilon tolerance");
 }
 
-void test_environment_fixtures(void) {
+CTEST(SUITE_NAME, test_environment_fixtures) {
   const char *test_dir = "sandbox_dir_92358835";
   const char *test_file = "sandbox_dir_92358835/sandbox_f_89984111.txt";
   const char *file_content = "ctest compilation verification content";
@@ -51,7 +53,7 @@ void test_environment_fixtures(void) {
     fclose(f_cleanup);
 }
 
-void test_mock_binary_fixtures(void) {
+CTEST(SUITE_NAME, test_mock_binary_fixtures) {
   const char *mock_bin = "./sandbox_mock_bin_90123847";
 
   int setup_res = ctest_setup_mock_binary(mock_bin, "#include <stdio.h>\n"
@@ -94,7 +96,7 @@ void test_mock_binary_fixtures(void) {
   ASSERT_INT_EQ(stat_res, -1, "Failed setup cleans up temp .c source file");
 }
 
-void test_output_muting(void) {
+CTEST(SUITE_NAME, test_output_muting) {
   int saved_stdout = ctest_mute_output(STDOUT_FILENO);
   ASSERT(saved_stdout >= 0,
          "Muting stdout should return a valid backup file descriptor");
@@ -105,7 +107,7 @@ void test_output_muting(void) {
   printf("  [INFO] Terminal output unmuted successfully.\n");
 }
 
-void test_stdout_capturing(void) {
+CTEST(SUITE_NAME, test_stdout_capturing) {
   char buf[BUF_SIZE];
 
   int start_res = ctest_capture_stdout_start();
@@ -116,17 +118,4 @@ void test_stdout_capturing(void) {
   ASSERT(bytes > 0, "Captured bytes should be greater than zero");
   ASSERT_STR_EQ(buf, "CAPTURE_TEST_PAYLOAD",
                 "Captured string matches stdout output");
-}
-
-int main(void) {
-  printf("\nRunning: %s...\n", __FILE__);
-
-  test_basic_assertions();
-  test_environment_fixtures();
-  test_output_muting();
-  test_mock_binary_fixtures();
-  test_stdout_capturing();
-
-  ctest_summary();
-  return ctest_fail_count == 0 ? 0 : 1;
 }

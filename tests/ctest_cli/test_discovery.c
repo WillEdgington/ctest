@@ -3,6 +3,8 @@
 #include <ctest/ctest.h>
 #include <stdlib.h>
 
+#define SUITE_NAME test_discovery
+
 char mock_root[] = "mock_root_78323422";
 char mock_c[] = "mock_root_78323422/test_37589331.c";
 char mock_d[] = "mock_root_78323422/test_37589331.c";
@@ -13,7 +15,7 @@ char mock_misc_f[] = "mock_root_78323422/misc_48395722";
 char nested_dir[] = "mock_root_78323422/nested_dir_84392311";
 char nested_test_f[] = "mock_root_78323422/nested_dir_84392311/test_43893322";
 
-void setup_mock_test_suite(void) {
+static void setup_mock_test_suite(void) {
   ctest_setup_mock_dir(mock_root);
   ctest_setup_mock_file(mock_c, NULL);
   ctest_setup_mock_file(mock_d, NULL);
@@ -29,7 +31,7 @@ void setup_mock_test_suite(void) {
   chmod(nested_test_f, 0755);
 }
 
-void teardown_mock_test_suite(void) {
+static void teardown_mock_test_suite(void) {
   ctest_teardown_mock_file(mock_c);
   ctest_teardown_mock_file(mock_d);
   ctest_teardown_mock_file(mock_o);
@@ -42,7 +44,7 @@ void teardown_mock_test_suite(void) {
   ctest_teardown_mock_dir(mock_root);
 }
 
-void test_discovery_nested_traversal(void) {
+CTEST(SUITE_NAME, test_discovery_nested_traversal) {
   setup_mock_test_suite();
 
   Vector *paths = ctest_discover_tests(mock_root);
@@ -60,13 +62,4 @@ void test_discovery_nested_traversal(void) {
   teardown_mock_test_suite();
   vector_free(paths);
   free(paths);
-}
-
-int main(void) {
-  printf("\nRunning: %s...", __FILE__);
-
-  test_discovery_nested_traversal();
-
-  ctest_summary();
-  return ctest_fail_count == 0 ? 0 : 1;
 }

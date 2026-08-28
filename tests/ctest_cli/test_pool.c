@@ -11,6 +11,7 @@
 #include <string.h>
 #include <unistd.h>
 
+#define SUITE_NAME test_pool
 #define MOCK_POOL_DIR "sandbox_pool_dir_11222422/"
 
 static void test_pool_all_passing_parallel(void) {

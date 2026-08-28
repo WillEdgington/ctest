@@ -2,12 +2,14 @@
 #include <ctest/ctest.h>
 #include <string.h>
 
+#define SUITE_NAME test_registry
+
 static void dummy_fn_a(void) {}
 static void dummy_fn_b(void) {}
 
 // test lifecycle: initialise registry, add 2 dummy TestCase records, retrieve
 // from indexes 0 and 1
-static void test_registry_basic_lifecycle(void) {
+CTEST(SUITE_NAME, test_registry_basic_lifecycle) {
   CTestRegistry reg;
   ctest_registry_init(&reg);
 
@@ -38,7 +40,7 @@ static void test_registry_basic_lifecycle(void) {
 }
 
 // test oob access: call out of index get
-static void test_registry_out_of_bounds(void) {
+CTEST(SUITE_NAME, test_registry_out_of_bounds) {
   CTestRegistry reg;
   ctest_registry_init(&reg);
 
@@ -55,7 +57,7 @@ static void test_registry_out_of_bounds(void) {
 // test global init: Reset a CTestRegistry struct to {0} via memset. call add
 // and verify element is add successfully (auto-initialise zero-initialised
 // global registry)
-static void test_registry_lazy_init(void) {
+CTEST(SUITE_NAME, test_registry_lazy_init) {
   CTestRegistry reg;
   memset(&reg, 0, sizeof(reg));
 
@@ -76,7 +78,7 @@ static void test_registry_lazy_init(void) {
 
 // test order preservation: push x amount of TestCase structs to CTestRegistry,
 // iterate through and check they are in the expected order (FIFO)
-static void test_registry_order_preservation(void) {
+CTEST(SUITE_NAME, test_registry_order_preservation) {
   CTestRegistry reg;
   ctest_registry_init(&reg);
 
@@ -119,7 +121,7 @@ static void test_registry_order_preservation(void) {
 
 // test double clear: Create non-empty CTestRegistry. Call clear, assert count
 // == 0, call clear again and verify that there are no memory fault occurs
-static void test_registry_double_clear(void) {
+CTEST(SUITE_NAME, test_registry_double_clear) {
   CTestRegistry reg;
   ctest_registry_init(&reg);
   ctest_registry_add(&reg, "suite_clear", "test_clear", dummy_fn_a);
@@ -134,27 +136,11 @@ static void test_registry_double_clear(void) {
 // test global singleton state: need to check get global registry returns a
 // stable static reference across calls. call it twice, verify both returns are
 // the same.
-static void test_registry_global_singleton(void) {
+CTEST(SUITE_NAME, test_registry_global_singleton) {
   CTestRegistry *reg1 = ctest_get_global_registry();
   CTestRegistry *reg2 = ctest_get_global_registry();
 
   ASSERT_PTR_NOT_NULL(reg1, "Global registry pointer should not be NULL");
   ASSERT(reg1 == reg2,
          "ctest_get_global_registry should return a stable pointer");
-
-  ctest_registry_clear(reg1);
-}
-
-int main(void) {
-  printf("\nRunning: %s...\n", __FILE__);
-
-  test_registry_basic_lifecycle();
-  test_registry_out_of_bounds();
-  test_registry_lazy_init();
-  test_registry_order_preservation();
-  test_registry_double_clear();
-  test_registry_global_singleton();
-
-  ctest_summary();
-  return ctest_fail_count == 0 ? 0 : 1;
 }

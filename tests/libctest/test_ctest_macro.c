@@ -2,6 +2,8 @@
 #include <ctest/ctest.h>
 #include <stdio.h>
 
+#define SUITE_NAME test_ctest_macro
+
 static int test_one_ran = 0;
 static int test_two_ran = 0;
 

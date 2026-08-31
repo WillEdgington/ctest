@@ -14,7 +14,15 @@
 #define SUITE_NAME test_pool
 #define MOCK_POOL_DIR "sandbox_pool_dir_11222422/"
 
-static void test_pool_all_passing_parallel(void) {
+CTEST_SETUP_SUITE(SUITE_NAME) {
+  ctest_setup_mock_dir((const char *)MOCK_POOL_DIR);
+}
+
+CTEST_TEARDOWN_SUITE(SUITE_NAME) {
+  ctest_teardown_mock_dir((const char *)MOCK_POOL_DIR);
+}
+
+CTEST(SUITE_NAME, test_pool_all_passing_parallel) {
   const char *bin1 = MOCK_POOL_DIR "test_pass_1";
   const char *bin2 = MOCK_POOL_DIR "test_pass_2";
   const char *bin3 = MOCK_POOL_DIR "test_pass_3";
@@ -63,7 +71,7 @@ static void test_pool_all_passing_parallel(void) {
   ctest_teardown_mock_binary(bin3);
 }
 
-static void test_pool_mixed_outcomes_parallel(void) {
+CTEST(SUITE_NAME, test_pool_mixed_outcomes_parallel) {
   const char *bin_pass = MOCK_POOL_DIR "test_mix_pass";
   const char *bin_fail = MOCK_POOL_DIR "test_mix_fail";
   const char *bin_crash = MOCK_POOL_DIR "test_mix_crash";
@@ -122,7 +130,7 @@ static void test_pool_mixed_outcomes_parallel(void) {
   ctest_teardown_mock_binary(bin_crash);
 }
 
-static void test_pool_empty_suites_vector(void) {
+CTEST(SUITE_NAME, test_pool_empty_suites_vector) {
   Vector suites;
   vector_init(&suites, DISCOVERY_MAX_PATH_LEN);
 
@@ -151,7 +159,7 @@ static void test_pool_empty_suites_vector(void) {
   vector_free(&suites);
 }
 
-static void test_pool_single_worker_jobs_one(void) {
+CTEST(SUITE_NAME, test_pool_single_worker_jobs_one) {
   const char *bin1 = MOCK_POOL_DIR "test_seq_1";
   const char *bin2 = MOCK_POOL_DIR "test_seq_2";
 
@@ -190,20 +198,4 @@ static void test_pool_single_worker_jobs_one(void) {
   free(suites);
   ctest_teardown_mock_binary(bin1);
   ctest_teardown_mock_binary(bin2);
-}
-
-int main(void) {
-  printf("\nRunning: %s...\n", __FILE__);
-
-  ctest_setup_mock_dir((const char *)MOCK_POOL_DIR);
-
-  test_pool_all_passing_parallel();
-  test_pool_mixed_outcomes_parallel();
-  test_pool_empty_suites_vector();
-  test_pool_single_worker_jobs_one();
-
-  ctest_teardown_mock_dir((const char *)MOCK_POOL_DIR);
-
-  ctest_summary();
-  return ctest_fail_count == 0 ? 0 : 1;
 }

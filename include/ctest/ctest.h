@@ -101,17 +101,67 @@ void ctest_report_result(bool passed, const char *file, int line,
 // expose necessary internal implementation details of registry module (for use
 // by macros)
 typedef struct CTestRegistry CTestRegistry;
+typedef struct TestSuite TestSuite;
 typedef void (*CTestFn)(void);
 CTestRegistry *ctest_get_global_registry(void);
 void ctest_registry_add(CTestRegistry *reg, const char *suite_name,
                         const char *test_name, CTestFn fn);
+void ctest_registry_set_setup_suite(CTestRegistry *reg, const char *suite,
+                                    CTestFn fn);
+void ctest_registry_set_teardown_suite(CTestRegistry *reg, const char *suite,
+                                       CTestFn fn);
+void ctest_registry_set_setup(CTestRegistry *reg, const char *suite,
+                              CTestFn fn);
+void ctest_registry_set_teardown(CTestRegistry *reg, const char *suite,
+                                 CTestFn fn);
 
 // intermediary macro needed so potential input macros can be evaluated
 #define CTEST_CONCAT_IMPL(a, b, c) a##_##b##_##c
 #define CTEST_CONCAT(a, b, c) CTEST_CONCAT_IMPL(a, b, c)
 
-// define test case method interface, add test case to global reg before main(),
-// define test case method fully
+// suite hooks setup
+#define CTEST_SETUP_SUITE(suite)                                               \
+  static void CTEST_CONCAT(ctest_fn, setup_suite, suite)(void);                \
+  __attribute__((constructor)) static void CTEST_CONCAT(                       \
+      ctest_init, setup_suite, suite)(void) {                                  \
+    ctest_registry_set_setup_suite(                                            \
+        ctest_get_global_registry(), #suite,                                   \
+        CTEST_CONCAT(ctest_fn, setup_suite, suite));                           \
+  }                                                                            \
+  static void CTEST_CONCAT(ctest_fn, setup_suite, suite)(void)
+
+// suite hooks teardown
+#define CTEST_TEARDOWN_SUITE(suite)                                            \
+  static void CTEST_CONCAT(ctest_fn, teardown_suite, suite)(void);             \
+  __attribute__((constructor)) static void CTEST_CONCAT(                       \
+      ctest_init, teardown_suite, suite)(void) {                               \
+    ctest_registry_set_teardown_suite(                                         \
+        ctest_get_global_registry(), #suite,                                   \
+        CTEST_CONCAT(ctest_fn, teardown_suite, suite));                        \
+  }                                                                            \
+  static void CTEST_CONCAT(ctest_fn, teardown_suite, suite)(void)
+
+// test hooks setup
+#define CTEST_SETUP(suite)                                                     \
+  static void CTEST_CONCAT(ctest_fn, setup, suite)(void);                      \
+  __attribute__((constructor)) static void CTEST_CONCAT(ctest_init, setup,     \
+                                                        suite)(void) {         \
+    ctest_registry_set_setup(ctest_get_global_registry(), #suite,              \
+                             CTEST_CONCAT(ctest_fn, setup, suite));            \
+  }                                                                            \
+  static void CTEST_CONCAT(ctest_fn, setup, suite)(void)
+
+// test hooks teardown
+#define CTEST_TEARDOWN(suite)                                                  \
+  static void CTEST_CONCAT(ctest_fn, teardown, suite)(void);                   \
+  __attribute__((constructor)) static void CTEST_CONCAT(ctest_init, teardown,  \
+                                                        suite)(void) {         \
+    ctest_registry_set_teardown(ctest_get_global_registry(), #suite,           \
+                                CTEST_CONCAT(ctest_fn, teardown, suite));      \
+  }                                                                            \
+  static void CTEST_CONCAT(ctest_fn, teardown, suite)(void)
+
+// ctest test block
 #define CTEST(suite, name)                                                     \
   static void CTEST_CONCAT(ctest_fn, suite, name)(void);                       \
   __attribute__((constructor)) static void CTEST_CONCAT(ctest_init, suite,     \

@@ -72,11 +72,9 @@ void ctest_registry_clear(CTestRegistry *reg) {
   for (size_t i = 0; i < reg->suites.count; i++) {
     TestSuite *ts = (TestSuite *)vector_get(&reg->suites, i);
     vector_free(&ts->cases);
-    memset(&ts->cases, 0, sizeof(Vector));
   }
 
   vector_free(&reg->suites);
-  memset(&reg->suites, 0, sizeof(Vector));
   reg->initialised = false;
 }
 

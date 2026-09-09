@@ -79,18 +79,9 @@ static int ctest_mock_remove_by_path(const char *path) {
     CTestMockEntry *entry = (CTestMockEntry *)vector_get(&mock_vec, i);
     if (entry != NULL && entry->path != NULL &&
         strcmp(entry->path, path) == 0) {
-      free(entry->path); // free saved path
-
-      // move everything down
-      size_t remaining = mock_vec.count - 1 - i;
-      if (remaining > 0) {
-        void *dst = vector_get(&mock_vec, i);
-        void *src = vector_get(&mock_vec, i + 1);
-        memmove(dst, src, remaining * mock_vec.item_size);
-      }
-
-      mock_vec.count--;
-      return 0; // found path and removed entry
+      free(entry->path);
+      vector_remove(&mock_vec, i, NULL);
+      return 0;
     }
   }
 

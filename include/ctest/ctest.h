@@ -176,13 +176,20 @@ void ctest_summary(void);
 int ctest_mute_output(int std_stream_flag);
 void ctest_unmute_output(int saved_descriptor, int std_stream_flag);
 
-void ctest_setup_mock_dir(const char *path);
-void ctest_teardown_mock_dir(const char *path);
-int ctest_setup_mock_file(const char *path, const char *content);
-void ctest_teardown_mock_file(const char *path);
-int ctest_setup_mock_binary(const char *path, const char *c_code);
-void ctest_teardown_mock_binary(const char *path);
 int ctest_capture_stdout_start(void);
 ssize_t ctest_capture_stdout_end(char *buf, size_t buf_size);
+
+// mock lifecycle methods
+
+int ctest_setup_mock_dir(const char *path);
+int ctest_teardown_mock_dir(const char *path);
+
+int ctest_setup_mock_file(const char *path, const char *content);
+int ctest_teardown_mock_file(const char *path);
+
+int ctest_setup_mock_binary(const char *path, const char *c_code);
+int ctest_teardown_mock_binary(const char *path);
+
+int ctest_teardown_all_mocks(void);
 
 #endif

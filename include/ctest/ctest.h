@@ -198,8 +198,6 @@ int ctest_teardown_all_mocks(void);
 
 // child process handling helpers (./src/libctest/process.c)
 
-// define the ASSERT_SIGNAL and ASSERT_EXIT_CODE macros
-
 typedef struct {
   bool exited_normally;
   int exit_code;
@@ -209,5 +207,31 @@ typedef struct {
 
 int ctest_run_in_child(void (*func)(void *arg), void *arg,
                        CTestProcessResult *out_res);
+
+#define ASSERT_SIGNAL(func, arg, expected_sig, message)                        \
+  do {                                                                         \
+    ctest_run_count++;                                                         \
+    CTestProcessResult _res;                                                   \
+    bool _run_ok = (ctest_run_in_child((func), (arg), &_res) == 0);            \
+    bool passed = _run_ok && _res.terminated_by_signal &&                      \
+                  (_res.term_signal == (expected_sig));                        \
+    if (!passed)                                                               \
+      ctest_fail_count++;                                                      \
+    ctest_report_result(passed, __FILE__, __LINE__,                            \
+                        "signal(" #func ") == " #expected_sig, message);       \
+  } while (0)
+
+#define ASSERT_EXIT_CODE(func, arg, expected_code, message)                    \
+  do {                                                                         \
+    ctest_run_count++;                                                         \
+    CTestProcessResult _res;                                                   \
+    bool _run_ok = (ctest_run_in_child((func), (arg), &_res) == 0);            \
+    bool passed = _run_ok && _res.exited_normally &&                           \
+                  (_res.exit_code == (expected_code));                         \
+    if (!passed)                                                               \
+      ctest_fail_count++;                                                      \
+    ctest_report_result(passed, __FILE__, __LINE__,                            \
+                        "exit_code(" #func ") == " #expected_code, message);   \
+  } while (0)
 
 #endif

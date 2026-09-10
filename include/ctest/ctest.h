@@ -171,7 +171,11 @@ void ctest_registry_set_teardown(CTestRegistry *reg, const char *suite,
   }                                                                            \
   static void CTEST_CONCAT(ctest_fn, suite, name)(void)
 
+// test suite summarisation helper (./src/libctest/libctest.c)
+
 void ctest_summary(void);
+
+// output handling methods (./src/libctest/libctest.c)
 
 int ctest_mute_output(int std_stream_flag);
 void ctest_unmute_output(int saved_descriptor, int std_stream_flag);
@@ -179,7 +183,7 @@ void ctest_unmute_output(int saved_descriptor, int std_stream_flag);
 int ctest_capture_stdout_start(void);
 ssize_t ctest_capture_stdout_end(char *buf, size_t buf_size);
 
-// mock lifecycle methods
+// mock lifecycle methods (./src/libctest/mock.c)
 
 int ctest_setup_mock_dir(const char *path);
 int ctest_teardown_mock_dir(const char *path);
@@ -191,5 +195,19 @@ int ctest_setup_mock_binary(const char *path, const char *c_code);
 int ctest_teardown_mock_binary(const char *path);
 
 int ctest_teardown_all_mocks(void);
+
+// child process handling helpers (./src/libctest/process.c)
+
+// define the ASSERT_SIGNAL and ASSERT_EXIT_CODE macros
+
+typedef struct {
+  bool exited_normally;
+  int exit_code;
+  bool terminated_by_signal;
+  int term_signal;
+} CTestProcessResult;
+
+int ctest_run_in_child(void (*func)(void *arg), void *arg,
+                       CTestProcessResult *out_res);
 
 #endif

@@ -2,7 +2,9 @@
 #include "mock.h"
 #include <clib/iter.h>
 #include <clib/vector.h>
+#include <ctest/ctest.h>
 #include <errno.h>
+#include <signal.h>
 #include <stdbool.h>
 #include <stddef.h>
 #include <stdio.h>
@@ -14,6 +16,42 @@ static int max_path_len = 256;
 
 static Vector mock_vec = {0};
 
+static bool mock_signal_handlers_installed = false;
+
+static void mock_signal_handler(int sig) {
+  ctest_teardown_all_mocks();
+
+  signal(sig, SIG_DFL);
+  raise(sig);
+}
+
+static void mock_exit_handler(void) { ctest_teardown_all_mocks(); }
+
+static void install_mock_handlers(void) {
+  if (mock_signal_handlers_installed)
+    return;
+
+  // register exit handler to be called on standard exit
+  atexit(mock_exit_handler);
+
+  struct sigaction sa;
+  memset(&sa, 0, sizeof(sa));
+  sa.sa_handler = mock_signal_handler;
+  sigemptyset(&sa.sa_mask);
+  sa.sa_flags = 0;
+
+  // abnormal process termination signals that require resource teardown
+  int signals[] = {SIGSEGV, SIGABRT, SIGBUS, SIGFPE, SIGILL, SIGTERM};
+  size_t num_signals = sizeof(signals) / sizeof(signals[0]);
+
+  // set the action for each signal to the sa
+  for (size_t i = 0; i < num_signals; i++) {
+    sigaction(signals[i], &sa, NULL);
+  }
+
+  mock_signal_handlers_installed = true;
+}
+
 // Internal mock stack helpers
 
 static int mock_vec_init() {
@@ -22,6 +60,7 @@ static int mock_vec_init() {
             "ctest: mock: unable to initialise Vector for mock entries\n");
     return -1;
   }
+  install_mock_handlers();
   return 0;
 }
 
@@ -38,15 +77,15 @@ static int create_mock_entry(CTestMockEntry *entry, const char *path,
   return 0;
 }
 
-static bool ctest_mock_path_exists(const char *path) {
+static bool mock_path_exists(const char *path) {
   // F_OK: test for files existence
   if (path == NULL || access(path, F_OK) != 0)
     return false;
   return true;
 }
 
-static int ctest_mock_push(const char *path, CTestMockType type) {
-  if (path == NULL || *path == '\0' || ctest_mock_path_exists(path))
+static int mock_push(const char *path, CTestMockType type) {
+  if (path == NULL || *path == '\0' || mock_path_exists(path))
     return -1;
 
   if (mock_vec.items == NULL) {
@@ -67,11 +106,11 @@ static int ctest_mock_push(const char *path, CTestMockType type) {
   return 0;
 }
 
-static const CTestMockEntry *ctest_mock_get(size_t index) {
+static const CTestMockEntry *mock_get(size_t index) {
   return (const CTestMockEntry *)vector_get(&mock_vec, index);
 }
 
-static int ctest_mock_remove_by_path(const char *path) {
+static int mock_remove_by_path(const char *path) {
   if (path == NULL || mock_vec.items == NULL || mock_vec.count == 0)
     return -1;
 
@@ -150,11 +189,11 @@ static bool has_file_suffix(const char *path) {
 // Public mock API implementation
 
 int ctest_setup_mock_dir(const char *path) {
-  if (ctest_mock_push(path, CTEST_MOCK_DIR) != 0)
+  if (mock_push(path, CTEST_MOCK_DIR) != 0)
     return -1;
 
   if (mkdir(path, MKDIR_MODE_FLAGS) != 0) {
-    ctest_mock_remove_by_path(path);
+    mock_remove_by_path(path);
     return -1;
   }
   return 0;
@@ -165,7 +204,7 @@ int ctest_teardown_mock_dir(const char *path) {
     return -1;
 
   for (size_t i = mock_vec.count; i > 0; i--) {
-    const CTestMockEntry *entry = ctest_mock_get(i - 1);
+    const CTestMockEntry *entry = mock_get(i - 1);
     if (entry->type == CTEST_MOCK_DIR && strcmp(entry->path, path) == 0) {
       if (teardown_dir(path) != 0)
         return -1;
@@ -179,12 +218,12 @@ int ctest_teardown_mock_dir(const char *path) {
 }
 
 int ctest_setup_mock_file(const char *path, const char *content) {
-  if (ctest_mock_push(path, CTEST_MOCK_FILE) != 0)
+  if (mock_push(path, CTEST_MOCK_FILE) != 0)
     return -1;
 
   FILE *f = fopen(path, "w");
   if (f == NULL) {
-    ctest_mock_remove_by_path(path);
+    mock_remove_by_path(path);
     return -1;
   }
 
@@ -199,7 +238,7 @@ int ctest_teardown_mock_file(const char *path) {
     return -1;
 
   for (size_t i = mock_vec.count; i > 0; i--) {
-    const CTestMockEntry *entry = ctest_mock_get(i - 1);
+    const CTestMockEntry *entry = mock_get(i - 1);
     if (entry->type == CTEST_MOCK_FILE && strcmp(entry->path, path) == 0) {
       if (teardown_file(path) != 0)
         return -1;
@@ -213,11 +252,11 @@ int ctest_teardown_mock_file(const char *path) {
 }
 
 int ctest_setup_mock_binary(const char *path, const char *c_code) {
-  if (c_code == NULL || ctest_mock_push(path, CTEST_MOCK_BIN) != 0)
+  if (c_code == NULL || mock_push(path, CTEST_MOCK_BIN) != 0)
     return -1;
 
   if (has_file_suffix(path)) {
-    ctest_mock_remove_by_path(path);
+    mock_remove_by_path(path);
     return -1;
   }
 
@@ -226,7 +265,7 @@ int ctest_setup_mock_binary(const char *path, const char *c_code) {
 
   FILE *f = fopen(src_path, "w");
   if (f == NULL) {
-    ctest_mock_remove_by_path(path);
+    mock_remove_by_path(path);
     return -1;
   }
 
@@ -238,11 +277,12 @@ int ctest_setup_mock_binary(const char *path, const char *c_code) {
   // 2>/dev/null: redirects compiler error stream to /dev/null (mutes)
   snprintf(cmd, sizeof(cmd), "gcc -o %s %s 2>/dev/null", path, src_path);
   if (system(cmd) != 0) {
-    ctest_mock_remove_by_path(path);
+    mock_remove_by_path(path);
     unlink(src_path);
     return -1;
   }
 
+  // set file access permissions
   chmod(path, BINARY_F_MODE_FLAGS);
   return 0;
 }
@@ -252,7 +292,7 @@ int ctest_teardown_mock_binary(const char *path) {
     return -1;
 
   for (size_t i = mock_vec.count; i > 0; i--) {
-    const CTestMockEntry *entry = ctest_mock_get(i - 1);
+    const CTestMockEntry *entry = mock_get(i - 1);
     if (entry->type == CTEST_MOCK_BIN && strcmp(entry->path, path) == 0) {
       if (teardown_binary(path) != 0)
         return -1;

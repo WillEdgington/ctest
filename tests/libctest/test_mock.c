@@ -1,5 +1,6 @@
 #include "libctest/mock.h"
 #include <ctest/ctest.h>
+#include <signal.h>
 #include <stdlib.h>
 #include <sys/wait.h>
 #include <unistd.h>
@@ -374,4 +375,35 @@ CTEST(SUITE_NAME, test_teardown_all_mocks_handles_external_file_removal) {
   ASSERT_INT_EQ(ctest_teardown_all_mocks(), 0,
                 "ctest_teardown_all_mocks() should return 0 (success) when a "
                 "tracked mock resource was already unlinked externally");
+}
+
+// test behaviour on signals
+
+static void child_crash_scenario(void *path) {
+  ctest_setup_mock_file((const char *)path, "data");
+  raise(SIGSEGV);
+}
+
+CTEST(SUITE_NAME, test_mock_cleanup_on_sigsegv) {
+  CTestProcessResult out_res;
+  char *mock_path = "mock_sigsev_file_53783344.txt";
+  ctest_run_in_child(child_crash_scenario, (void *)mock_path, &out_res);
+
+  ASSERT_INT_EQ(
+      access(mock_path, F_OK), -1,
+      "Mock file should be swept by signal handler before process termination");
+}
+
+static void child_exit_scenario(void *path) {
+  ctest_setup_mock_file((const char *)path, "data");
+  exit(0);
+}
+
+CTEST(SUITE_NAME, test_mock_cleanup_on_exit) {
+  CTestProcessResult out_res;
+  char *mock_path = "mock_exit_file_53783344.txt";
+  ctest_run_in_child(child_exit_scenario, (void *)mock_path, &out_res);
+
+  ASSERT_INT_EQ(access(mock_path, F_OK), -1,
+                "Mock file should be swept by signal handler before exit");
 }

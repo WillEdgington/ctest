@@ -32,6 +32,7 @@ __attribute__((weak)) int main(int argc, char **argv) {
 
       if (suite->teardown_suite_fn != NULL)
         suite->teardown_suite_fn();
+      ctest_teardown_all_mocks(); // teardown all mocks per-suite
     }
   }
 

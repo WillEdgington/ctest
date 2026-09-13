@@ -1,4 +1,3 @@
-#include "libctest/mock.h"
 #include <ctest/ctest.h>
 #include <signal.h>
 #include <stdlib.h>
@@ -54,7 +53,8 @@ CTEST(SUITE_NAME, test_mock_dir_teardown_non_existent_mock) {
 CTEST(SUITE_NAME, test_mock_dir_teardown_fails_with_non_mock_dir) {
   const char *mock_dir_path = "mock_dir_85934211/";
 
-  mkdir(mock_dir_path, MKDIR_MODE_FLAGS); // bypass mock directory setup
+  mkdir(mock_dir_path,
+        S_IRWXU | S_IRWXG | S_IRWXO); // bypass mock directory setup
   ASSERT_INT_EQ(ctest_teardown_mock_dir(mock_dir_path), -1,
                 "ctest_teardown_mock_dir() call should return -1 (fail) if "
                 "directory is not on the mock stack");

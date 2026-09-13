@@ -1,16 +1,24 @@
 #define _GNU_SOURCE
-#include "mock.h"
-#include <clib/iter.h>
 #include <clib/vector.h>
 #include <ctest/ctest.h>
 #include <errno.h>
+#include <fcntl.h>
 #include <signal.h>
 #include <stdbool.h>
-#include <stddef.h>
 #include <stdio.h>
 #include <stdlib.h>
 #include <string.h>
-#include <unistd.h>
+
+#define MKDIR_MODE_FLAGS                                                       \
+  S_IRWXU | S_IRWXG | S_IRWXO // read/write/execute by owner/group/others
+#define BINARY_F_MODE_FLAGS 0755
+
+typedef enum { CTEST_MOCK_FILE, CTEST_MOCK_BIN, CTEST_MOCK_DIR } CTestMockType;
+
+typedef struct {
+  char *path;
+  CTestMockType type;
+} CTestMockEntry;
 
 static int max_path_len = 256;
 

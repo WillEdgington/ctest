@@ -38,9 +38,4 @@ int ctest_finalise_suite(WorkerSlot *slot, unsigned int timeout_sec,
                          CTestVerbosity verbosity, SuiteMetrics *out_metrics,
                          Vector *failure_ledger);
 
-SuiteMetrics ctest_execute_suite(const char *binary_path,
-                                 unsigned int timeout_sec,
-                                 CTestVerbosity verbosity,
-                                 Vector *failure_ledger);
-
 #endif

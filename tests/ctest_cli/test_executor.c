@@ -387,3 +387,40 @@ CTEST(SUITE_NAME, test_finalise_suite_buf_flush_on_completion) {
 
   vector_free(&ledger);
 }
+
+// -- ctest_suite_metrics_cleanup() --
+
+CTEST(SUITE_NAME, test_suite_metrics_lifecycle_helpers) {
+  SuiteMetrics metrics;
+
+  ASSERT_INT_EQ(ctest_suite_metrics_init(&metrics), 0,
+                "ctest_suite_metrics_init() call should return 0 (success) "
+                "when vector initialisation is possible");
+
+  TestCaseResult result = {.status = TEST_FAIL,
+                           .line_num = 56,
+                           .expr = "1 != 1",
+                           .msg = "One should not equal one"};
+  vector_push(&metrics.test_results, &result);
+  metrics.total_runs++;
+  metrics.total_failures++;
+
+  ASSERT_INT_EQ(
+      metrics.test_results.count, 1,
+      "SuiteMetrics.test_results.count should increase by one after push");
+
+  ctest_suite_metrics_cleanup(&metrics);
+
+  ASSERT_INT_EQ(metrics.total_runs, 0,
+                "SuiteMetrics.total_runs should reset after "
+                "ctest_suite_metrics_cleanup() call");
+  ASSERT_INT_EQ(metrics.total_failures, 0,
+                "SuiteMetrics.total_failures should reset after "
+                "ctest_suite_metrics_cleanup() call");
+  ASSERT_INT_EQ(metrics.test_results.count, 0,
+                "SuiteMetrics.test_results.count should reset after "
+                "ctest_suite_metrics_cleanup() call");
+  ASSERT_PTR_NULL(metrics.test_results.items,
+                  "SuiteMetrics.test_results.items should be NULL after "
+                  "ctest_suite_metrics_cleanup() call");
+}

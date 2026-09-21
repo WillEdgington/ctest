@@ -252,3 +252,17 @@ int ctest_finalise_suite(WorkerSlot *slot, unsigned int timeout_sec,
   slot->is_active = 0;
   return 0;
 }
+
+int ctest_suite_metrics_init(SuiteMetrics *metrics) {
+  memset(metrics, 0, sizeof(SuiteMetrics));
+  if (vector_init(&metrics->test_results, sizeof(TestCaseResult)) != 0) {
+    fprintf(stderr, "ctest: failed to initialise vector for test results\n");
+    return -1;
+  }
+  return 0;
+}
+
+void ctest_suite_metrics_cleanup(SuiteMetrics *metrics) {
+  vector_free(&metrics->test_results);
+  memset(metrics, 0, sizeof(SuiteMetrics));
+}

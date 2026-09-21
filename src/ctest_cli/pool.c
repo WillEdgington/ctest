@@ -86,10 +86,18 @@ static void launch_workers(WorkerSlot *workers, SuiteMetrics *slot_metrics,
 
       // zero the worker
       memset(&workers[i], 0, sizeof(WorkerSlot));
-      memset(&slot_metrics[i], 0, sizeof(SuiteMetrics));
 
-      if (ctest_launch_suite(bin_path, config->verbosity, &workers[i]) == 0)
+      // (re-)initialise the SuiteMetrics slot
+      if (ctest_suite_metrics_init(&slot_metrics[i]) != 0) {
+        continue;
+      }
+
+      if (ctest_launch_suite(bin_path, config->verbosity, &workers[i]) == 0) {
         (*active_count)++;
+      } else {
+        // unable to launch slot so cleanup the initialised SuiteMetrics
+        ctest_suite_metrics_cleanup(&slot_metrics[i]);
+      }
     }
   }
 }
@@ -151,7 +159,7 @@ static void process_workers(WorkerSlot *workers, SuiteMetrics *slot_metrics,
 
       // zero the worker
       memset(&workers[i], 0, sizeof(WorkerSlot));
-      memset(&slot_metrics[i], 0, sizeof(SuiteMetrics));
+      ctest_suite_metrics_cleanup(&slot_metrics[i]);
       (*active_count)--;
     }
   }
@@ -216,6 +224,11 @@ int ctest_pool_run(const Vector *test_bins, const CTestConfig *config,
 
   terminate_remaining_workers(workers, jobs);
   restore_signals(&old_sa_int, &old_sa_term);
+
+  // cleanup all SuiteMetrics stored in slot_metrics
+  for (size_t i = 0; i < jobs; i++) {
+    ctest_suite_metrics_cleanup(&slot_metrics[i]);
+  }
 
   free(workers);
   free(slot_metrics);

@@ -19,6 +19,7 @@ void ctest_report_result(bool passed, const char *file, int line,
                          const char *expr, const char *msg, ...) {
   char custom_msg[CUSTOM_MSG_BUFFER_SIZE] = {0};
 
+  // format optional custom message
   if (msg != NULL) {
     va_list args;
     va_start(args, msg);
@@ -26,20 +27,19 @@ void ctest_report_result(bool passed, const char *file, int line,
     va_end(args);
   }
 
+  // check if running under an orchestrated test runner protocol
   const char *runner_active = getenv("CTEST_RUNNER");
-  const char *verbose_active = getenv("CTEST_VERBOSE");
-
   bool is_runner = (runner_active && strcmp(runner_active, "1") == 0);
-  bool is_verbose = (verbose_active && strcmp(verbose_active, "1") == 0);
 
   if (is_runner) {
+    // runner mode: structured delimiter-separated record to stdout
     if (!passed) {
       fprintf(stdout,
               "FAIL" CTEST_TEST_DELIM "%s" CTEST_TEST_DELIM
               "%d" CTEST_TEST_DELIM "%s" CTEST_TEST_DELIM "%s\n",
               file, line, expr, custom_msg);
       fflush(stdout);
-    } else if (is_verbose) {
+    } else {
       fprintf(stdout,
               "PASS" CTEST_TEST_DELIM "%s" CTEST_TEST_DELIM
               "%d" CTEST_TEST_DELIM "%s" CTEST_TEST_DELIM "%s\n",
@@ -47,12 +47,14 @@ void ctest_report_result(bool passed, const char *file, int line,
       fflush(stdout);
     }
   } else {
+    // standalone mode: formatted, colourised text (pass to stdout, fail to
+    // stderr)
     if (!passed) {
-      fprintf(stderr, "\n  " CTEST_COLOR_RED "[FAIL] %s" CTEST_COLOR_RESET "\n",
+      fprintf(stderr, "\n  " CTEST_COLOR_RED "[FAIL]" CTEST_COLOR_RESET " %s\n",
               custom_msg[0] ? custom_msg : expr);
       fprintf(stderr, "         Expression: %s\n", expr);
       fprintf(stderr, "         Location  : Line %d in %s\n", line, file);
-    } else if (is_verbose) {
+    } else {
       fprintf(stdout, "  " CTEST_COLOR_GREEN "[PASS]" CTEST_COLOR_RESET " %s\n",
               custom_msg[0] ? custom_msg : expr);
     }

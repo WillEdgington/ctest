@@ -14,31 +14,74 @@
 #define SUITE_NAME test_pool
 #define MOCK_POOL_DIR "sandbox_pool_dir_11222422/"
 
+// 3 passes, return 0
+static const char *mock_pass_3_bin = MOCK_POOL_DIR "test_pass_3_bin_85392333";
+static const char *mock_pass_3_c_code =
+    "#include <stdio.h>\n"
+    "int main(void) {\n"
+    "  printf(\"PASS" CTEST_TEST_DELIM "<file>" CTEST_TEST_DELIM
+    "<line-number>" CTEST_TEST_DELIM "<expression>" CTEST_TEST_DELIM
+    "<message>\\n\");\n"
+    "  printf(\"PASS" CTEST_TEST_DELIM "<file>" CTEST_TEST_DELIM
+    "<line-number>" CTEST_TEST_DELIM "<expression>" CTEST_TEST_DELIM
+    "<message>\\n\");\n"
+    "  printf(\"PASS" CTEST_TEST_DELIM "<file>" CTEST_TEST_DELIM
+    "<line-number>" CTEST_TEST_DELIM "<expression>" CTEST_TEST_DELIM
+    "<message>\\n\");\n"
+    "  printf(\"SUMMARY" CTEST_TEST_DELIM "3" CTEST_TEST_DELIM "0\\n\");\n"
+    "  return 0;\n"
+    "}\n";
+
+// 1 pass, return 0
+static const char *mock_pass_1_bin = MOCK_POOL_DIR "test_pass_1_bin_99395859";
+static const char *mock_pass_1_c_code =
+    "#include <stdio.h>\n"
+    "int main(void) {\n"
+    "  printf(\"PASS" CTEST_TEST_DELIM "<file>" CTEST_TEST_DELIM
+    "<line-number>" CTEST_TEST_DELIM "<expression>" CTEST_TEST_DELIM
+    "<message>\\n\");\n"
+    "  printf(\"SUMMARY" CTEST_TEST_DELIM "1" CTEST_TEST_DELIM "0\\n\");\n"
+    "  return 0;\n"
+    "}\n";
+
+// 1 pass, 2 fails, return 1
+static const char *mock_pass_1_fail_2_bin =
+    MOCK_POOL_DIR "test_pass_1_fail_2_bin_00829649";
+static const char *mock_pass_1_fail_2_c_code =
+    "#include <stdio.h>\n"
+    "int main(void) {\n"
+    "  printf(\"FAIL" CTEST_TEST_DELIM "<file>" CTEST_TEST_DELIM
+    "<line-number>" CTEST_TEST_DELIM "<expression>" CTEST_TEST_DELIM
+    "<message>\\n\");\n"
+    "  printf(\"PASS" CTEST_TEST_DELIM "<file>" CTEST_TEST_DELIM
+    "<line-number>" CTEST_TEST_DELIM "<expression>" CTEST_TEST_DELIM
+    "<message>\\n\");\n"
+    "  printf(\"FAIL" CTEST_TEST_DELIM "<file>" CTEST_TEST_DELIM
+    "<line-number>" CTEST_TEST_DELIM "<expression>" CTEST_TEST_DELIM
+    "<message>\\n\");\n"
+    "  printf(\"SUMMARY" CTEST_TEST_DELIM "3" CTEST_TEST_DELIM "1\\n\");\n"
+    "  return 1;\n"
+    "}\n";
+
+// crashes (triggers SIGSEGV)
+static const char *mock_crashing_bin =
+    MOCK_POOL_DIR "test_crashing_bin_70896493";
+static const char *mock_crashing_c_code = "#include <stdlib.h>\n"
+                                          "int main(void) {\n"
+                                          "  int *p = NULL;\n"
+                                          "  *p = 2;\n"
+                                          "  return 0;\n"
+                                          "}\n";
+
 CTEST_SETUP_SUITE(SUITE_NAME) {
   ctest_setup_mock_dir((const char *)MOCK_POOL_DIR);
 }
 
-CTEST_TEARDOWN_SUITE(SUITE_NAME) {
-  ctest_teardown_mock_dir((const char *)MOCK_POOL_DIR);
-}
-
 CTEST(SUITE_NAME, test_pool_all_passing_parallel) {
-  const char *bin1 = MOCK_POOL_DIR "test_pass_1";
-  const char *bin2 = MOCK_POOL_DIR "test_pass_2";
-  const char *bin3 = MOCK_POOL_DIR "test_pass_3";
-
-  ctest_setup_mock_binary(
-      bin1,
-      "#include <stdio.h>\nint main(void) { printf(\"SUMMARY" CTEST_TEST_DELIM
-      "3" CTEST_TEST_DELIM "0\\n\"); return 0; }\n");
-  ctest_setup_mock_binary(
-      bin2,
-      "#include <stdio.h>\nint main(void) { printf(\"SUMMARY" CTEST_TEST_DELIM
-      "2" CTEST_TEST_DELIM "0\\n\"); return 0; }\n");
-  ctest_setup_mock_binary(
-      bin3,
-      "#include <stdio.h>\nint main(void) { printf(\"SUMMARY" CTEST_TEST_DELIM
-      "4" CTEST_TEST_DELIM "0\\n\"); return 0; }\n");
+  const char *mock_pass_1_bin_2 = MOCK_POOL_DIR "test_pass_1_bin_00096458";
+  ctest_setup_mock_binary(mock_pass_1_bin, mock_pass_1_c_code);
+  ctest_setup_mock_binary(mock_pass_3_bin, mock_pass_3_c_code);
+  ctest_setup_mock_binary(mock_pass_1_bin_2, mock_pass_1_c_code);
 
   Vector *suites = ctest_discover_tests((const char *)MOCK_POOL_DIR);
 
@@ -58,7 +101,7 @@ CTEST(SUITE_NAME, test_pool_all_passing_parallel) {
   ASSERT_INT_EQ(status, 0, "ctest_pool_run returns success status code");
   ASSERT_INT_EQ(metrics.total_suites, 3,
                 "Correct number of suites ran stored in session metrics");
-  ASSERT_INT_EQ(metrics.total_runs, 9,
+  ASSERT_INT_EQ(metrics.total_runs, 5,
                 "Aggregated total runs across parallel workers");
   ASSERT_INT_EQ(metrics.total_failures, 0, "Recorded zero assertion failures");
   ASSERT_INT_EQ(ledger.count, 0, "Ledger remains empty for clean pass");
@@ -66,38 +109,15 @@ CTEST(SUITE_NAME, test_pool_all_passing_parallel) {
   vector_free(&ledger);
   vector_free(suites);
   free(suites);
-  ctest_teardown_mock_binary(bin1);
-  ctest_teardown_mock_binary(bin2);
-  ctest_teardown_mock_binary(bin3);
+  ctest_teardown_mock_binary(mock_pass_1_bin);
+  ctest_teardown_mock_binary(mock_pass_3_bin);
+  ctest_teardown_mock_binary(mock_pass_1_bin_2);
 }
 
 CTEST(SUITE_NAME, test_pool_mixed_outcomes_parallel) {
-  const char *bin_pass = MOCK_POOL_DIR "test_mix_pass";
-  const char *bin_fail = MOCK_POOL_DIR "test_mix_fail";
-  const char *bin_crash = MOCK_POOL_DIR "test_mix_crash";
-
-  ctest_setup_mock_binary(bin_pass, "#include <stdio.h>\n"
-                                    "int main(void) {\n"
-                                    "  printf(\"SUMMARY" CTEST_TEST_DELIM
-                                    "2" CTEST_TEST_DELIM "0\\n\");\n"
-                                    "  return 0;\n"
-                                    "}\n");
-
-  ctest_setup_mock_binary(
-      bin_fail,
-      "#include <stdio.h>\n"
-      "int main(void) {\n"
-      "  printf(\"FAIL" CTEST_TEST_DELIM "m.c" CTEST_TEST_DELIM
-      "10" CTEST_TEST_DELIM "a == b" CTEST_TEST_DELIM "Mismatch\\n\");\n"
-      "  printf(\"SUMMARY" CTEST_TEST_DELIM "2" CTEST_TEST_DELIM "1\\n\");\n"
-      "  return 0;\n"
-      "}\n");
-
-  ctest_setup_mock_binary(bin_crash, "#include <stdlib.h>\n"
-                                     "int main(void) {\n"
-                                     "  int *p = NULL; *p = 1;\n"
-                                     "  return 0;\n"
-                                     "}\n");
+  ctest_setup_mock_binary(mock_pass_3_bin, mock_pass_3_c_code);
+  ctest_setup_mock_binary(mock_pass_1_fail_2_bin, mock_pass_1_fail_2_c_code);
+  ctest_setup_mock_binary(mock_crashing_bin, mock_crashing_c_code);
 
   Vector *suites = ctest_discover_tests((const char *)MOCK_POOL_DIR);
 
@@ -117,17 +137,17 @@ CTEST(SUITE_NAME, test_pool_mixed_outcomes_parallel) {
   ASSERT_INT_EQ(status, 0,
                 "ctest_pool_run handles mixed execution outcomes cleanly");
   ASSERT_INT_EQ(metrics.total_crashes, 1, "Recorded crashed suite");
-  ASSERT_INT_EQ(metrics.total_failures, 1,
+  ASSERT_INT_EQ(metrics.total_failures, 2,
                 "Parsed assertion failures into SessionMetrics");
-  ASSERT_INT_EQ((int)ledger.count, 2,
+  ASSERT_INT_EQ(ledger.count, 3,
                 "Failure and crash packets populated in ledger");
 
   vector_free(&ledger);
   vector_free(suites);
   free(suites);
-  ctest_teardown_mock_binary(bin_pass);
-  ctest_teardown_mock_binary(bin_fail);
-  ctest_teardown_mock_binary(bin_crash);
+  ctest_teardown_mock_binary(mock_pass_3_bin);
+  ctest_teardown_mock_binary(mock_pass_1_fail_2_bin);
+  ctest_teardown_mock_binary(mock_crashing_bin);
 }
 
 CTEST(SUITE_NAME, test_pool_empty_suites_vector) {
@@ -159,18 +179,9 @@ CTEST(SUITE_NAME, test_pool_empty_suites_vector) {
   vector_free(&suites);
 }
 
-CTEST(SUITE_NAME, test_pool_single_worker_jobs_one) {
-  const char *bin1 = MOCK_POOL_DIR "test_seq_1";
-  const char *bin2 = MOCK_POOL_DIR "test_seq_2";
-
-  ctest_setup_mock_binary(
-      bin1,
-      "#include <stdio.h>\nint main(void) { printf(\"SUMMARY" CTEST_TEST_DELIM
-      "1" CTEST_TEST_DELIM "0\\n\"); return 0; }\n");
-  ctest_setup_mock_binary(
-      bin2,
-      "#include <stdio.h>\nint main(void) { printf(\"SUMMARY" CTEST_TEST_DELIM
-      "1" CTEST_TEST_DELIM "0\\n\"); return 0; }\n");
+CTEST(SUITE_NAME, test_pool_single_worker) {
+  ctest_setup_mock_binary(mock_pass_3_bin, mock_pass_3_c_code);
+  ctest_setup_mock_binary(mock_pass_1_bin, mock_pass_1_c_code);
 
   Vector *suites = ctest_discover_tests((const char *)MOCK_POOL_DIR);
 
@@ -190,12 +201,14 @@ CTEST(SUITE_NAME, test_pool_single_worker_jobs_one) {
   ASSERT_INT_EQ(status, 0, "Pool executes successfully when jobs == 1");
   ASSERT_INT_EQ(metrics.total_suites, 2,
                 "Both suites ran with single worker slot");
-  ASSERT_INT_EQ(metrics.total_runs, 2,
+  ASSERT_INT_EQ(metrics.total_runs, 4,
                 "Test runs aggregated correctly for single worker");
+  ASSERT_INT_EQ(metrics.total_failures, 0,
+                "Total failures aggregated correctly for single worker");
 
   vector_free(&ledger);
   vector_free(suites);
   free(suites);
-  ctest_teardown_mock_binary(bin1);
-  ctest_teardown_mock_binary(bin2);
+  ctest_teardown_mock_binary(mock_pass_3_bin);
+  ctest_teardown_mock_binary(mock_pass_1_bin);
 }

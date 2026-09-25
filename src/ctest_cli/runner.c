@@ -19,7 +19,7 @@ static int session_exit(SessionMetrics *session) {
 }
 
 static int ledger_init(Vector *ledger) {
-  return vector_init(ledger, CTEST_MAX_FAIL_LINE_LEN);
+  return vector_init(ledger, sizeof(FailureEntry));
 }
 
 static void ledger_free(Vector *ledger) { vector_free(ledger); }

@@ -77,27 +77,32 @@ static void print_suite_conclusion(const SuiteMetrics *metrics) {
 }
 
 static void print_test_outcomes(const SuiteMetrics *metrics) {
-  int runs = metrics->total_runs;
-  int fails = metrics->total_failures;
-  SuiteState state = metrics->state;
-  int passed = runs > fails ? runs - fails : 0;
+  if (metrics->test_results.count > 0) {
+    TestStatus cur_status;
 
-  if (passed > 0) {
-    printf(CTEST_COLOR_GREEN);
-    for (int i = 0; i < passed; i++)
-      printf(".");
+    for (size_t i = 0; i < metrics->test_results.count; i++) {
+      TestCaseResult *test_case = vector_get(&metrics->test_results, i);
+
+      if (i == 0 || cur_status != test_case->status) {
+        cur_status = test_case->status;
+        printf("%s",
+               cur_status == TEST_PASS ? CTEST_COLOR_GREEN : CTEST_COLOR_RED);
+      }
+
+      printf("%s", cur_status == TEST_PASS ? "." : "F");
+    }
   }
-  if (fails > 0) {
-    printf(CTEST_COLOR_RED);
-    for (int i = 0; i < fails; i++)
-      printf("F");
-  }
-  if (state == SUITE_CRASH) {
+
+  switch (metrics->state) {
+  case SUITE_CRASH:
     printf(CTEST_COLOR_YELLOW "C");
-  } else if (state == SUITE_TIMEOUT) {
+    break;
+  case SUITE_TIMEOUT:
     printf(CTEST_COLOR_CYAN "T");
+    break;
+  default:
+    break;
   }
-
   printf(CTEST_COLOR_RESET);
 }
 
@@ -119,34 +124,105 @@ void ctest_report_start_banner(const char *root_dir, CTestVerbosity verbosity) {
   */
 }
 
-void ctest_report_suite_start(const char *binary_path,
-                              CTestVerbosity verbosity) {
-  if (verbosity == CTEST_VERBOSITY_VERBOSE)
-    printf("[RUN] %s\n", binary_path);
+static void report_suite_metrics_normal(const char *binary_path,
+                                        const SuiteMetrics *metrics) {
+  print_suite_conclusion(metrics);
+  printf("%s: ", binary_path);
+  print_test_outcomes(metrics);
+  printf("\n");
+
+  /*
+  [PASS]  tests/ctest_cli/test_discovery: ......
+  [FAIL]  tests/ctest_cli/test_discovery: ...F.F
+  [CRASH] tests/ctest_cli/test_discovery: F..C
+  [TIME]  tests/ctest_cli/test_discovery: ..FF.T
+  */
+}
+
+static void print_test_case(const char *file_path,
+                            const TestCaseResult *test_case) {
+  if (test_case->status == TEST_PASS) {
+    printf(CTEST_COLOR_GREEN "[PASS]" CTEST_COLOR_RESET
+                             " %s (%s) | Line %zu in %s\n",
+           test_case->msg[0] ? test_case->msg : "---", test_case->expr,
+           test_case->line_num, file_path);
+  } else {
+    printf(CTEST_COLOR_RED "[FAIL]" CTEST_COLOR_RESET
+                           " %s (%s) | Line %zu in %s\n",
+           test_case->msg[0] ? test_case->msg : "---", test_case->expr,
+           test_case->line_num, file_path);
+  }
+  /*
+  [<status>] <message> (expression) | Line <line-number> in <file>
+  */
+}
+
+static void report_suite_metrics_verbose(const char *binary_path,
+                                         const SuiteMetrics *metrics) {
+  printf("\n[RUN] %s\n", binary_path);
+
+  const char *file_path = metrics->file_path;
+  Iter it = vector_iter((Vector *)&metrics->test_results);
+  while (it.next(&it) == 0) {
+    TestCaseResult *test_case = (TestCaseResult *)it.current.value;
+    printf("  ");
+    print_test_case(file_path, test_case);
+  }
+
+  print_suite_conclusion(metrics);
+  printf("\n");
+  /*
+
+  [RUN] <binary_path>
+    [<status>] <message> (expression) | Line <line-number> in <file>
+    ...
+  [<metrics->state>]
+  */
 }
 
 void ctest_report_suite_metrics(const char *binary_path,
                                 const SuiteMetrics *metrics,
                                 CTestVerbosity verbosity) {
-  // do not print individual suite metrics when --quiet flag is present
-  if (verbosity == CTEST_VERBOSITY_QUIET)
-    return;
-  // when --verbose flag present, we print individual assertions, not a basic
-  // summary of the suite metrics
-  if (verbosity == CTEST_VERBOSITY_VERBOSE) {
-    printf("\n");
-    return;
+  switch (verbosity) {
+  case CTEST_VERBOSITY_NORMAL:
+    report_suite_metrics_normal(binary_path, metrics);
+    break;
+  case CTEST_VERBOSITY_VERBOSE:
+    report_suite_metrics_verbose(binary_path, metrics);
+    break;
+  default:
+    break;
   }
+}
 
-  print_suite_conclusion(metrics);
-  printf("%s: ", binary_path);
-  print_test_outcomes(metrics);
-  printf("\n");
-  /*
-  [PASS]  tests/ctest_cli/test_discovery: ......
-  [FAIL]  tests/ctest_cli/test_discovery: ....FF
-  [CRASH] tests/ctest_cli/test_discovery: ..FC
-  */
+static void print_failure_entry(FailureEntry *fail_entry) {
+  switch (fail_entry->type) {
+  case FAILURE_TEST_CASE:
+    printf("\n  " CTEST_COLOR_RED "[FAIL]" CTEST_COLOR_RESET " %s\n"
+           "         Expression: %s\n"
+           "         Location  : Line %zu in %s\n",
+           fail_entry->test_case.msg[0] ? fail_entry->test_case.msg
+                                        : fail_entry->test_case.expr,
+           fail_entry->test_case.expr, fail_entry->test_case.line_num,
+           fail_entry->file_path);
+    break;
+  case FAILURE_SUITE_TIMEOUT:
+    printf("\n  " CTEST_COLOR_CYAN "[TIME]" CTEST_COLOR_RESET
+           " Suite execution timed out\n"
+           "         Limit     : Exceeded %u second(s) threshold\n"
+           "         Location  : %s\n",
+           fail_entry->timeout_sec, fail_entry->file_path);
+    break;
+  case FAILURE_SUITE_CRASH:
+    printf("\n  " CTEST_COLOR_YELLOW "[CRASH]" CTEST_COLOR_RESET
+           " Suite execution terminated unexpectedly\n"
+           "         Signal    : Terminated by signal %d\n"
+           "         Location  : %s\n",
+           fail_entry->signal_num, fail_entry->file_path);
+    break;
+  default:
+    break;
+  }
 }
 
 void ctest_report_ledger(const Vector *ledger, CTestVerbosity verbosity) {
@@ -160,7 +236,8 @@ void ctest_report_ledger(const Vector *ledger, CTestVerbosity verbosity) {
 
   Iter it = vector_iter((Vector *)ledger);
   while (it.next(&it) == 0) {
-    printf("\n%s", (char *)it.current.value);
+    FailureEntry *fail_entry = (FailureEntry *)it.current.value;
+    print_failure_entry(fail_entry);
   }
   printf("\n");
   /*

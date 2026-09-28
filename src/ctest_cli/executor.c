@@ -1,9 +1,9 @@
 #define _GNU_SOURCE
 #include "executor.h"
-#include "config.h"
 #include <clib/vector.h>
 #include <ctest/ctest.h>
 #include <errno.h>
+#include <fcntl.h>
 #include <poll.h>
 #include <signal.h>
 #include <stdio.h>
@@ -14,90 +14,86 @@
 #include <time.h>
 #include <unistd.h>
 
-static size_t TMP_BUF_LEN = 256;
+static int TMP_BUF_LEN = 512;
 
-static void parse_ipc_fields(const char *line, char *file, size_t file_sz,
-                             int *line_num, char *expr, size_t expr_sz,
-                             char *msg, size_t msg_sz) {
+// 0 for pass, 1 for fail, -1 for error/not recognised
+static int parse_ipc_fields(const char *line, char *file, size_t file_sz,
+                            size_t *line_num, char *expr, size_t expr_sz,
+                            char *msg, size_t msg_sz) {
   // PATTERN: <status><d><file><d><line-number><d><expression><d><message>
+  int test_status;
+  if (strncmp(line, "PASS" CTEST_TEST_DELIM, strlen("PASS" CTEST_TEST_DELIM)) ==
+      0) {
+    test_status = 0;
+  } else if (strncmp(line, "FAIL" CTEST_TEST_DELIM,
+                     strlen("FAIL" CTEST_TEST_DELIM)) == 0) {
+    test_status = 1;
+  } else {
+    return -1;
+  }
+
   const char *p = strchr(line, CTEST_TEST_DELIM[0]);
-  if (p == NULL)
-    return;
   p++;
 
   const char *p1 = strchr(p, CTEST_TEST_DELIM[0]);
-  if (p1 != NULL) {
-    snprintf(file, file_sz, "%.*s", (int)(p1 - p), p);
-    *line_num = atoi(p1 + 1);
-    const char *p2 = strchr(p1 + 1, CTEST_TEST_DELIM[0]);
-    if (p2 != NULL) {
-      const char *p3 = strchr(p2 + 1, CTEST_TEST_DELIM[0]);
-      if (p3 != NULL) {
-        snprintf(expr, expr_sz, "%.*s", (int)(p3 - (p2 + 1)), p2 + 1);
-        snprintf(msg, msg_sz, "%s", p3 + 1);
-        msg[strcspn(msg, "\r\n")] = '\0';
-      } else {
-        snprintf(expr, expr_sz, "%s", p2 + 1);
-        expr[strcspn(expr, "\r\n")] = '\0';
-      }
-    }
+  if (p1 == NULL)
+    return -1;
+
+  snprintf(file, file_sz, "%.*s", (int)(p1 - p), p);
+  *line_num = (size_t)atoi(p1 + 1);
+  const char *p2 = strchr(p1 + 1, CTEST_TEST_DELIM[0]);
+  if (p2 == NULL)
+    return -1;
+
+  const char *p3 = strchr(p2 + 1, CTEST_TEST_DELIM[0]);
+  if (p3 != NULL) {
+    snprintf(expr, expr_sz, "%.*s", (int)(p3 - (p2 + 1)), p2 + 1);
+    snprintf(msg, msg_sz, "%s", p3 + 1);
+    msg[strcspn(msg, "\r\n")] = '\0';
+  } else {
+    snprintf(expr, expr_sz, "%s", p2 + 1);
+    expr[strcspn(expr, "\r\n")] = '\0';
+    msg[0] = '\0';
   }
+  return test_status;
 }
 
 static void process_output_line(const char *line, SuiteMetrics *metrics,
-                                Vector *failure_ledger,
-                                CTestVerbosity verbosity) {
-  /*
-  --verbose assertion print:
-    [<status>] <message> (expression) | Line <line-number> in <file>
+                                Vector *failure_ledger) {
+  FailureEntry fail_entry = {0};
+  int test_status = parse_ipc_fields(
+      line, fail_entry.file_path, sizeof(fail_entry.file_path),
+      &fail_entry.test_case.line_num, fail_entry.test_case.expr,
+      sizeof(fail_entry.test_case.expr), fail_entry.test_case.msg,
+      sizeof(fail_entry.test_case.msg));
 
-  Failure ledger print:
-    [FAIL] <message|expression>
-           Expression: <expression>
-           Location  : Line <line-number> in <file>
-  */
-  if (strncmp(line, "PASS" CTEST_TEST_DELIM, 5) == 0 &&
-      verbosity == CTEST_VERBOSITY_VERBOSE) {
-    char file[TMP_BUF_LEN], expr[TMP_BUF_LEN], msg[TMP_BUF_LEN];
-    int line_num = 0;
-    parse_ipc_fields(line, file, sizeof(file), &line_num, expr, sizeof(expr),
-                     msg, sizeof(msg));
+  if (test_status == -1) {
+    return;
+  }
 
-    printf("  " CTEST_COLOR_GREEN "[PASS]" CTEST_COLOR_RESET
-           " %s (%s) | Line %d in %s\n",
-           msg[0] ? msg : "---", expr, line_num, file);
-  } else if (strncmp(line, "FAIL" CTEST_TEST_DELIM, 5) == 0) {
-    char file[TMP_BUF_LEN], expr[TMP_BUF_LEN], msg[TMP_BUF_LEN];
-    int line_num = 0;
-    parse_ipc_fields(line, file, sizeof(file), &line_num, expr, sizeof(expr),
-                     msg, sizeof(msg));
+  metrics->total_runs++;
+  fail_entry.test_case.status = test_status == 0 ? TEST_PASS : TEST_FAIL;
 
-    if (verbosity == CTEST_VERBOSITY_VERBOSE)
-      printf("  " CTEST_COLOR_RED "[FAIL]" CTEST_COLOR_RESET
-             " %s (%s) | Line %d in %s\n",
-             msg[0] ? msg : "---", expr, line_num, file);
-
-    char formatted_fail[CTEST_MAX_LINE_LEN];
-    snprintf(formatted_fail, sizeof(formatted_fail),
-             "  " CTEST_COLOR_RED "[FAIL]" CTEST_COLOR_RESET " %s\n"
-             "         Expression: %s\n"
-             "         Location  : Line %d in %s\n",
-             msg[0] ? msg : expr, expr, line_num, file);
-
-    if (vector_push(failure_ledger, formatted_fail) == -1)
-      fprintf(stderr, "ctest: failed to push to the failure ledger\n");
-  } else if (strncmp(line, "SUMMARY" CTEST_TEST_DELIM, 8) == 0) {
-    int runs, fails;
-    if (sscanf(line, "SUMMARY" CTEST_TEST_DELIM "%d" CTEST_TEST_DELIM "%d",
-               &runs, &fails) == 2) {
-      metrics->total_runs = (size_t)runs;
-      metrics->total_failures = (size_t)fails;
+  if (fail_entry.test_case.status == TEST_FAIL) {
+    metrics->total_failures++;
+    fail_entry.type = FAILURE_TEST_CASE;
+    if (vector_push(failure_ledger, &fail_entry) != 0) {
+      fprintf(stderr,
+              "ctest: executor: failed to push to the failure ledger\n");
     }
+  }
+
+  if (vector_push(&metrics->test_results, &fail_entry.test_case) != 0) {
+    fprintf(stderr,
+            "ctest: executor: failed to push to the test results vector\n");
+  }
+
+  if (!metrics->file_path[0]) {
+    strcpy(metrics->file_path, fail_entry.file_path);
   }
 }
 
-int ctest_launch_suite(const char *binary_path, CTestVerbosity verbosity,
-                       WorkerSlot *slot) {
+int ctest_launch_suite(const char *binary_path, WorkerSlot *slot) {
   int pipefds[2];
   if (pipe(pipefds) == -1) {
     perror("ctest: pipe creation failed");
@@ -129,8 +125,6 @@ int ctest_launch_suite(const char *binary_path, CTestVerbosity verbosity,
     close(pipefds[1]);
 
     setenv("CTEST_RUNNER", "1", 1);
-    if (verbosity == CTEST_VERBOSITY_VERBOSE)
-      setenv("CTEST_VERBOSE", "1", 1);
 
     char *args[] = {(char *)binary_path, NULL};
     execvp(binary_path, args);
@@ -150,8 +144,8 @@ int ctest_launch_suite(const char *binary_path, CTestVerbosity verbosity,
   return 0;
 }
 
-int ctest_harvest_output(WorkerSlot *slot, CTestVerbosity verbosity,
-                         SuiteMetrics *metrics, Vector *failure_ledger) {
+int ctest_harvest_output(WorkerSlot *slot, SuiteMetrics *metrics,
+                         Vector *failure_ledger) {
   if (slot->is_active == 0 || slot->read_fd < 0)
     return 0;
 
@@ -168,8 +162,7 @@ int ctest_harvest_output(WorkerSlot *slot, CTestVerbosity verbosity,
           slot->line_buf[slot->buf_pos++] = c;
           if (c == '\n') {
             slot->line_buf[slot->buf_pos] = '\0';
-            process_output_line(slot->line_buf, metrics, failure_ledger,
-                                verbosity);
+            process_output_line(slot->line_buf, metrics, failure_ledger);
             slot->buf_pos = 0;
           }
         }
@@ -188,14 +181,13 @@ int ctest_harvest_output(WorkerSlot *slot, CTestVerbosity verbosity,
 }
 
 int ctest_finalise_suite(WorkerSlot *slot, unsigned int timeout_sec,
-                         CTestVerbosity verbosity, SuiteMetrics *out_metrics,
-                         Vector *failure_ledger) {
+                         SuiteMetrics *out_metrics, Vector *failure_ledger) {
   if (slot->is_active == 0)
     return 0;
 
   if (slot->buf_pos > 0) {
     slot->line_buf[slot->buf_pos] = '\0';
-    process_output_line(slot->line_buf, out_metrics, failure_ledger, verbosity);
+    process_output_line(slot->line_buf, out_metrics, failure_ledger);
     slot->buf_pos = 0;
   }
 
@@ -216,16 +208,15 @@ int ctest_finalise_suite(WorkerSlot *slot, unsigned int timeout_sec,
     out_metrics->state = SUITE_TIMEOUT;
     kill(-slot->pid, SIGKILL);
 
-    char timeout_msg[CTEST_MAX_LINE_LEN];
-    snprintf(timeout_msg, sizeof(timeout_msg),
-             "  " CTEST_COLOR_CYAN "[TIME]" CTEST_COLOR_RESET
-             " Suite execution timed out\n"
-             "         Limit     : Exceeded %u second(s) threshold\n"
-             "         Location  : %s\n",
-             timeout_sec, slot->bin_path);
+    // create FailureEntry structure for timeout
+    FailureEntry timeout_entry = {0};
+    timeout_entry.type = FAILURE_SUITE_TIMEOUT;
+    timeout_entry.timeout_sec = timeout_sec;
+    strcpy(timeout_entry.file_path, slot->bin_path);
 
-    if (vector_push(failure_ledger, timeout_msg) == -1)
-      fprintf(stderr, "ctest: failed to push to the failure ledger\n");
+    if (vector_push(failure_ledger, &timeout_entry) != 0)
+      fprintf(stderr,
+              "ctest: executor: failed to push to the failure ledger\n");
 
     int status;
     waitpid(slot->pid, &status, 0);
@@ -237,15 +228,15 @@ int ctest_finalise_suite(WorkerSlot *slot, unsigned int timeout_sec,
       // format crash
       out_metrics->state = SUITE_CRASH;
 
-      char crash_msg[CTEST_MAX_LINE_LEN];
-      snprintf(crash_msg, sizeof(crash_msg),
-               "  " CTEST_COLOR_YELLOW "[CRASH]" CTEST_COLOR_RESET
-               " Suite execution terminated unexpectedly\n"
-               "         Signal    : Terminated by signal %d\n"
-               "         Location  : %s\n",
-               WTERMSIG(status), slot->bin_path);
-      if (vector_push(failure_ledger, crash_msg) == -1)
-        fprintf(stderr, "ctest: failed to push to the failure ledger\n");
+      // create FailureEntry structure for crash
+      FailureEntry crash_entry = {0};
+      crash_entry.type = FAILURE_SUITE_CRASH;
+      crash_entry.signal_num = WTERMSIG(status);
+      strcpy(crash_entry.file_path, slot->bin_path);
+
+      if (vector_push(failure_ledger, &crash_entry) != 0)
+        fprintf(stderr,
+                "ctest: executor: failed to push to the failure ledger\n");
     }
   }
 

@@ -45,79 +45,93 @@ Example:
   },
 */
 
-static char *process_char(char *ptr, char c) {
-  switch (c) {
-  case '"':
-    *ptr++ = '\\';
-    *ptr++ = '"';
-    break;
-  case '\\':
-    *ptr++ = '\\';
-    *ptr++ = '\\';
-    break;
-  case '\n':
-    *ptr++ = '\\';
-    *ptr++ = 'n';
-    break;
-  case '\r':
-    *ptr++ = '\\';
-    *ptr++ = 'r';
-    break;
-  case '\t':
-    *ptr++ = '\\';
-    *ptr++ = 't';
-    break;
-  default:
-    *ptr++ = c;
-    break;
+static void print_escaped_string(FILE *file, const char *str) {
+  if (str == NULL) {
+    fputs("\"\"", file);
+    return;
   }
-  return ptr;
-}
 
-// ANSI CSI sequences terminate on a final byte in ASCII range 0x40-0x7E (@
-// through ~)
-static inline int is_csi_final_byte(char c) { return c >= '@' && c <= '~'; }
-
-static const char *skip_ansi(const char *ptr) {
-  if (ptr[0] == '\033' && ptr[1] == '[') {
-    const char *cur = ptr + 2;
-    while (*cur != '\0' && !is_csi_final_byte(*cur)) {
-      cur++;
+  fputc('"', file);
+  for (const char *p = str; *p != '\0'; p++) {
+    switch (*p) {
+    case '"':
+      fputs("\\\"", file);
+      break;
+    case '\\':
+      fputs("\\\\", file);
+      break;
+    case '\b':
+      fputs("\\b", file);
+      break;
+    case '\f':
+      fputs("\\f", file);
+      break;
+    case '\n':
+      fputs("\\n", file);
+      break;
+    case '\r':
+      fputs("\\r", file);
+      break;
+    case '\t':
+      fputs("\\t", file);
+      break;
+    default:
+      if ((unsigned char)*p < 0x20) {
+        fprintf(file, "\\u%04x", (unsigned char)*p);
+      } else {
+        fputc(*p, file);
+      }
+      break;
     }
-    return (*cur != '\0') ? cur + 1 : cur;
   }
-  return ptr;
+  fputc('"', file);
 }
 
-static void print_ledger_item(FILE *file, const char *message) {
-  // worse case: whole message is_escaped and of max length (double max length)
-  char buf[CTEST_MAX_FAIL_LINE_LEN << 1];
-
-  const char *m_ptr = message;
-  char *b_ptr = buf;
-
-  char c;
-  while (*m_ptr != '\0') {
-    const char *nxt = skip_ansi(m_ptr);
-    if (nxt != m_ptr) {
-      m_ptr = nxt;
-      continue;
-    }
-
-    c = *m_ptr;
-    b_ptr = process_char(b_ptr, c);
-    m_ptr++;
-  }
-  *b_ptr = '\0';
-
-  fprintf(file, "\"%s\"\n", buf);
+static void print_fail_case_entry(FILE *file, const FailureEntry *entry) {
+  fprintf(file, "    {\n");
+  fprintf(file, "      \"type\": \"test_case\",\n");
+  fprintf(file, "      \"file\": \"%s\",\n", entry->file_path);
+  fprintf(file, "      \"line\": %zu,\n", entry->test_case.line_num);
+  fprintf(file, "      \"expression\": ");
+  print_escaped_string(file, entry->test_case.expr);
+  fprintf(file, ",\n");
+  fprintf(file, "      \"message\": ");
+  print_escaped_string(file, entry->test_case.msg);
+  fprintf(file, "\n");
+  fprintf(file, "    }");
 }
 
-/*
-Example:
-"  [FAIL] 2 == 5\n         Expression: 2 == 5\n         Location  : Line 42 in
-tests/test_math.c\n",
-*/
+static void print_timeout_entry(FILE *file, const FailureEntry *entry) {
+  fprintf(file, "    {\n");
+  fprintf(file, "      \"type\": \"timeout\",\n");
+  fprintf(file, "      \"file\": \"%s\",\n", entry->file_path);
+  fprintf(file, "      \"timeout_sec\": %u\n", entry->timeout_sec);
+  fprintf(file, "    }");
+}
+
+static void print_crash_entry(FILE *file, const FailureEntry *entry) {
+  fprintf(file, "    {\n");
+  fprintf(file, "      \"type\": \"crash\",\n");
+  fprintf(file, "      \"file\": \"%s\",\n", entry->file_path);
+  fprintf(file, "      \"signal\": %d\n", entry->signal_num);
+  fprintf(file, "    }");
+}
+
+static void print_failure_entry(FILE *file, const FailureEntry *entry) {
+  switch (entry->type) {
+  case FAILURE_TEST_CASE:
+    print_fail_case_entry(file, entry);
+    break;
+
+  case FAILURE_SUITE_TIMEOUT:
+    print_timeout_entry(file, entry);
+    break;
+
+  case FAILURE_SUITE_CRASH:
+    print_crash_entry(file, entry);
+    break;
+  }
+}
 
 static void print_ledger(FILE *file, const Vector *failure_ledger) {
   if (failure_ledger->count == 0) {
@@ -126,12 +140,11 @@ static void print_ledger(FILE *file, const Vector *failure_ledger) {
   }
 
   fprintf(file, "  \"failures\": [\n");
-
-  Iter it = vector_iter((Vector *)failure_ledger);
-  while (it.next(&it) == 0) {
-    fprintf(file, "    ");
-    print_ledger_item(file, (const char *)it.current.value);
-    fprintf(file, "%s\n", it.index + 1 < failure_ledger->count ? "," : "");
+  for (size_t i = 0; i < failure_ledger->count; i++) {
+    const FailureEntry *entry =
+        (const FailureEntry *)vector_get(failure_ledger, i);
+    print_failure_entry(file, entry);
+    fprintf(file, "%s\n", (i + 1 < failure_ledger->count) ? "," : "");
   }
   fprintf(file, "  ]\n");
 }
@@ -139,17 +152,28 @@ static void print_ledger(FILE *file, const Vector *failure_ledger) {
 /*
 Example:
   "failures": [
-    "  [FAIL] 2 == 5\n         Expression: 2 == 5\n         Location  : Line 42
-in tests/test_math.c\n", "  [TIME] Suite execution timed out\n         Limit :
-Exceeded 2 second(s) threshold\n         Location  : tests/test_slow.c\n"
+    {
+      "type": "test_case",
+      "file": "tests/test_math.c",
+      "line": 42,
+      "expression": "2 == 5",
+      "message": "Mismatch"
+    },
+    {
+      "type": "timeout",
+      "file": "tests/test_slow.c",
+      "timeout_sec": 2
+    },
+    {
+      "type": "crash",
+      "file": "tests/test_crash.c",
+      "signal": 11
+    }
   ]
 */
 
 int ctest_json_write(const char *filepath, const SessionMetrics *metrics,
                      const Vector *failure_ledger) {
-  if (filepath == NULL || metrics == NULL)
-    return -1;
-
   FILE *file = fopen(filepath, "w");
   if (file == NULL)
     return -1;
@@ -181,9 +205,23 @@ Example:
     }
   },
   "failures": [
-    "  [FAIL] 2 == 5\n         Expression: 2 == 5\n         Location  : Line 42
-in tests/test_math.c\n", "  [TIME] Suite execution timed out\n         Limit :
-Exceeded 2 second(s) threshold\n         Location  : tests/test_slow.c\n"
+    {
+      "type": "test_case",
+      "file": "tests/test_math.c",
+      "line": 42,
+      "expression": "2 == 5",
+      "message": "Mismatch"
+    },
+    {
+      "type": "timeout",
+      "file": "tests/test_slow.c",
+      "timeout_sec": 2
+    },
+    {
+      "type": "crash",
+      "file": "tests/test_crash.c",
+      "signal": 11
+    }
   ]
 }
 */

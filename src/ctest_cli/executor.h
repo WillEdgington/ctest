@@ -1,7 +1,6 @@
 #ifndef CTEST_EXECUTOR_H
 #define CTEST_EXECUTOR_H
 
-#include "config.h"
 #include <clib/vector.h>
 #include <stddef.h>
 #include <stdlib.h>
@@ -19,6 +18,20 @@ typedef struct {
   size_t line_num;
   TestStatus status;
 } TestCaseResult;
+
+typedef enum {
+  FAILURE_TEST_CASE,
+  FAILURE_SUITE_TIMEOUT,
+  FAILURE_SUITE_CRASH
+} FailureType;
+
+typedef struct {
+  TestCaseResult test_case;
+  char file_path[CTEST_MAX_FIELD_LEN];
+  FailureType type;
+  unsigned int timeout_sec;
+  int signal_num;
+} FailureEntry;
 
 typedef enum { SUITE_DEFAULT, SUITE_CRASH, SUITE_TIMEOUT } SuiteState;
 
@@ -41,15 +54,13 @@ typedef struct {
   size_t buf_pos;
 } WorkerSlot;
 
-int ctest_launch_suite(const char *binary_path, CTestVerbosity verbosity,
-                       WorkerSlot *slot);
+int ctest_launch_suite(const char *binary_path, WorkerSlot *slot);
 
-int ctest_harvest_output(WorkerSlot *slot, CTestVerbosity verbosity,
-                         SuiteMetrics *metrics, Vector *failure_ledger);
+int ctest_harvest_output(WorkerSlot *slot, SuiteMetrics *metrics,
+                         Vector *failure_ledger);
 
 int ctest_finalise_suite(WorkerSlot *slot, unsigned int timeout_sec,
-                         CTestVerbosity verbosity, SuiteMetrics *out_metrics,
-                         Vector *failure_ledger);
+                         SuiteMetrics *out_metrics, Vector *failure_ledger);
 
 int ctest_suite_metrics_init(SuiteMetrics *metrics);
 

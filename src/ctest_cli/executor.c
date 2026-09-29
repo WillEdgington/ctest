@@ -16,6 +16,18 @@
 
 static int TMP_BUF_LEN = 512;
 
+static void restore_dfl_signal_handlers(void) {
+  struct sigaction sa;
+  memset(&sa, 0, sizeof(sa));
+  sa.sa_handler = SIG_DFL;
+  sigemptyset(&sa.sa_mask);
+
+  int signals[] = {SIGSEGV, SIGABRT, SIGBUS, SIGFPE, SIGILL, SIGTERM};
+  for (size_t i = 0; i < sizeof(signals) / sizeof(signals[0]); i++) {
+    sigaction(signals[i], &sa, NULL);
+  }
+}
+
 // 0 for pass, 1 for fail, -1 for error/not recognised
 static int parse_ipc_fields(const char *line, char *file, size_t file_sz,
                             size_t *line_num, char *expr, size_t expr_sz,
@@ -118,6 +130,8 @@ int ctest_launch_suite(const char *binary_path, WorkerSlot *slot) {
   }
 
   if (pid == 0) {
+    restore_dfl_signal_handlers();
+
     setpgid(0, 0);
     close(pipefds[0]);
 
@@ -185,6 +199,11 @@ int ctest_finalise_suite(WorkerSlot *slot, unsigned int timeout_sec,
   if (slot->is_active == 0)
     return 0;
 
+  // drain any unread output left in the pipe buffer before closing
+  if (slot->read_fd >= 0) {
+    ctest_harvest_output(slot, out_metrics, failure_ledger);
+  }
+
   if (slot->buf_pos > 0) {
     slot->line_buf[slot->buf_pos] = '\0';
     process_output_line(slot->line_buf, out_metrics, failure_ledger);
@@ -206,24 +225,52 @@ int ctest_finalise_suite(WorkerSlot *slot, unsigned int timeout_sec,
   if (slot->timed_out == 1) {
     // format timeout
     out_metrics->state = SUITE_TIMEOUT;
-    kill(-slot->pid, SIGKILL);
+
+    if (slot->pid > 0) {
+      // attempt graceful termination
+      kill(-slot->pid, SIGTERM);
+
+      int reaped = 0;
+      int status = 0;
+      struct timespec delay_interval = {.tv_sec = 0,
+                                        .tv_nsec = 5 * 1000 * 1000}; // 5ms
+
+      // maximum of 1000ms to wait for process to terminate
+      for (int i = 0; i < 200; i++) {
+        pid_t res = waitpid(slot->pid, &status, WNOHANG);
+        if (res == slot->pid) {
+          reaped = 1;
+          break;
+        }
+        nanosleep(&delay_interval, NULL);
+      }
+
+      // if not terminated then force kill
+      if (!reaped) {
+        kill(-slot->pid, SIGKILL);
+        waitpid(slot->pid, &status, 0);
+      }
+    }
 
     // create FailureEntry structure for timeout
     FailureEntry timeout_entry = {0};
     timeout_entry.type = FAILURE_SUITE_TIMEOUT;
     timeout_entry.timeout_sec = timeout_sec;
-    strcpy(timeout_entry.file_path, slot->bin_path);
+    if (slot->bin_path) {
+      snprintf(timeout_entry.file_path, sizeof(timeout_entry.file_path), "%s",
+               slot->bin_path);
+    }
 
     if (vector_push(failure_ledger, &timeout_entry) != 0)
       fprintf(stderr,
               "ctest: executor: failed to push to the failure ledger\n");
-
-    int status;
-    waitpid(slot->pid, &status, 0);
   } else {
     // wait for child process to finish
-    int status;
-    waitpid(slot->pid, &status, 0);
+    int status = 0;
+    if (slot->pid > 0) {
+      waitpid(slot->pid, &status, 0);
+    }
+
     if (WIFSIGNALED(status)) {
       // format crash
       out_metrics->state = SUITE_CRASH;
@@ -232,7 +279,10 @@ int ctest_finalise_suite(WorkerSlot *slot, unsigned int timeout_sec,
       FailureEntry crash_entry = {0};
       crash_entry.type = FAILURE_SUITE_CRASH;
       crash_entry.signal_num = WTERMSIG(status);
-      strcpy(crash_entry.file_path, slot->bin_path);
+      if (slot->bin_path) {
+        snprintf(crash_entry.file_path, sizeof(crash_entry.file_path), "%s",
+                 slot->bin_path);
+      }
 
       if (vector_push(failure_ledger, &crash_entry) != 0)
         fprintf(stderr,

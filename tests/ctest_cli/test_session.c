@@ -1,6 +1,7 @@
 #include "ctest_cli/executor.h"
 #include "ctest_cli/session.h"
 #include <ctest/ctest.h>
+#include <time.h>
 
 #define SUITE_NAME test_session
 
@@ -45,4 +46,60 @@ CTEST(SUITE_NAME, test_update_session) {
 
   ASSERT_INT_EQ(session.total_timeouts - n_timeouts, 1,
                 "Total timeouts should increment by 1 if suite timed out");
+}
+
+CTEST(SUITE_NAME, test_session_start) {
+  SessionMetrics session = {.total_runs = 59,
+                            .total_failures = 43,
+                            .total_suites = 18,
+                            .total_timeouts = 2,
+                            .end_time = {.tv_nsec = 8593L, .tv_sec = 384}};
+  struct timespec start = session.start_time;
+
+  ctest_session_start(&session);
+
+  ASSERT_INT_EQ(
+      session.total_runs, 0,
+      "ctest_session_start() call should zero-out SessionMetrics.total_runs");
+  ASSERT_INT_EQ(session.total_failures, 0,
+                "ctest_session_start() call should zero-out "
+                "SessionMetrics.total_failures");
+  ASSERT_INT_EQ(
+      session.total_suites, 0,
+      "ctest_session_start() call should zero-out SessionMetrics.total_suites");
+  ASSERT_INT_EQ(session.total_timeouts, 0,
+                "ctest_session_start() call should zero-out "
+                "SessionMetrics.total_timeouts");
+  ASSERT(session.end_time.tv_nsec == 0 && session.end_time.tv_sec == 0,
+         "ctest_session_start() call should zero-out SessionMetrics.end_time");
+
+  ASSERT(start.tv_nsec != session.start_time.tv_nsec &&
+             start.tv_sec != session.start_time.tv_sec,
+         "ctest_session_start() call should update SessionMetrics.start_time");
+}
+
+CTEST(SUITE_NAME, test_session_end) {
+  SessionMetrics session = {0};
+  struct timespec end = session.end_time;
+  ctest_session_end(&session);
+
+  ASSERT(end.tv_nsec != session.end_time.tv_nsec &&
+             end.tv_sec != session.end_time.tv_sec,
+         "ctest_session_end() call should update SessionMetrics.end_time");
+}
+
+CTEST(SUITE_NAME, test_session_get_duration_ms) {
+  SessionMetrics session = {0};
+
+  // diff == 1000ms
+  session.start_time.tv_sec = 1;
+  session.end_time.tv_sec = 2;
+
+  // diff == 101.24ms
+  session.start_time.tv_nsec = 111100000;
+  session.end_time.tv_nsec = 212340000;
+
+  ASSERT_DOUBLE_EQ(ctest_session_get_duration_ms(&session), 1101.24, 0.001,
+                   "ctest_session_get_duration_ms() call should return an "
+                   "accurately calculated duration value");
 }

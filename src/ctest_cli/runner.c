@@ -31,6 +31,8 @@ static void test_binaries_free(Vector *test_bin) {
 
 int ctest_run_session(const CTestConfig *config) {
   SessionMetrics session = {0};
+  ctest_session_start(&session);
+
   Vector ledger;
   if (ledger_init(&ledger) == -1) {
     fprintf(stderr, "ctest: failed to initialise failure ledger\n");
@@ -54,6 +56,7 @@ int ctest_run_session(const CTestConfig *config) {
   }
 
   test_binaries_free(test_bins);
+  ctest_session_end(&session);
 
   ctest_report_ledger(&ledger, config->verbosity);
   ctest_report_summary(&session, config->verbosity);

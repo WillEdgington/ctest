@@ -12,6 +12,7 @@ static void print_session_summary(FILE *file, const SessionMetrics *metrics) {
   size_t runs = metrics->total_runs;
   size_t failed = metrics->total_failures;
   size_t passed = runs - failed;
+  double duration_ms = ctest_session_get_duration_ms(metrics);
 
   fprintf(file,
           "  \"summary\": {\n"
@@ -24,9 +25,10 @@ static void print_session_summary(FILE *file, const SessionMetrics *metrics) {
           "      \"total\": %ld,\n"
           "      \"passed\": %ld,\n"
           "      \"failed\": %ld\n"
-          "    }\n"
+          "    },\n"
+          "    \"duration_ms\": %.2f\n"
           "  },\n",
-          suites, crashes, timeouts, runs, passed, failed);
+          suites, crashes, timeouts, runs, passed, failed, duration_ms);
 }
 
 /*

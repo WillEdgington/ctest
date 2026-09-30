@@ -258,17 +258,19 @@ static void report_summary_quiet(const SessionMetrics *session) {
   size_t timeouts = session->total_timeouts;
   size_t passed = tests > failed ? tests - failed : 0;
 
+  double duration_s = ctest_session_get_duration_ms(session) / 1000.0;
+
   if (failed == 0 && crashed == 0 && timeouts == 0) {
     printf(CTEST_COLOR_GREEN "ALL " CTEST_COLOR_RESET "%zu" CTEST_COLOR_GREEN
-                             " SUITES PASSED" CTEST_COLOR_RESET "\n",
-           suites);
+                             " SUITES PASSED" CTEST_COLOR_RESET " (%.2fs)\n",
+           suites, duration_s);
   } else {
-    printf("SUITES: %zu, TESTS: %zu, PASSED: " CTEST_COLOR_GREEN
+    printf("SUITES: %zu (%.2fs), TESTS: %zu, PASSED: " CTEST_COLOR_GREEN
            "%zu" CTEST_COLOR_RESET ", FAILED: " CTEST_COLOR_RED
            "%zu" CTEST_COLOR_RESET ", CRASHED: " CTEST_COLOR_YELLOW
            "%zu" CTEST_COLOR_RESET ", TIMEOUTS: " CTEST_COLOR_CYAN
            "%zu" CTEST_COLOR_RESET "\n",
-           suites, tests, passed, failed, crashed, timeouts);
+           suites, duration_s, tests, passed, failed, crashed, timeouts);
   }
   /*
   All Passed:
@@ -292,20 +294,22 @@ void ctest_report_summary(const SessionMetrics *session,
   size_t timeouts = session->total_timeouts;
   size_t passed = tests > failed ? tests - failed : 0;
 
+  double duration_s = ctest_session_get_duration_ms(session) / 1000.0;
+
   char buffer[buffer_len];
   if (failed == 0 && crashed == 0 && timeouts == 0) {
     snprintf(buffer, sizeof(buffer),
              CTEST_COLOR_GREEN "ALL " CTEST_COLOR_RESET "%zu" CTEST_COLOR_GREEN
-                               " SUITES PASSED" CTEST_COLOR_RESET,
-             suites);
+                               " SUITES PASSED" CTEST_COLOR_RESET " (%.2fs)",
+             suites, duration_s);
   } else {
     snprintf(buffer, sizeof(buffer),
-             "SUITES: %zu  TESTS: %zu  PASSED: " CTEST_COLOR_GREEN
+             "SUITES: %zu (%.2fs)  TESTS: %zu  PASSED: " CTEST_COLOR_GREEN
              "%zu" CTEST_COLOR_RESET "  FAILED: " CTEST_COLOR_RED
              "%zu" CTEST_COLOR_RESET "  CRASHED: " CTEST_COLOR_YELLOW
              "%zu" CTEST_COLOR_RESET "  TIMEOUTS: " CTEST_COLOR_CYAN
              "%zu" CTEST_COLOR_RESET,
-             suites, tests, passed, failed, crashed, timeouts);
+             suites, duration_s, tests, passed, failed, crashed, timeouts);
   }
 
   print_horiz_marg(NULL);
@@ -314,11 +318,12 @@ void ctest_report_summary(const SessionMetrics *session,
   /*
   All Passed (roughly):
   ==============================================================================
-                              ALL X SUITES PASSED
+                              ALL X SUITES PASSED (<duration-seconds>s)
   ==============================================================================
   Some Passed (roughly):
   ==============================================================================
-        SUITES: X  TESTS: X  PASSED: X  FAILED: X  CRASHED: X  TIMEOUTS: X
+  SUITES: X (<duration-seconds>s)  TESTS: X  PASSED: X  FAILED: X  CRASHED: X
+  TIMEOUTS: X
   ==============================================================================
   */
 }

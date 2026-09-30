@@ -62,6 +62,12 @@ CTEST(SUITE_NAME, test_json_write_all_failure_types) {
                             .total_crashes = 1,
                             .total_timeouts = 1};
 
+  // duration: 2212.34ms
+  metrics.end_time.tv_sec = 2;
+  metrics.end_time.tv_nsec = 212340000;
+  metrics.start_time.tv_sec = 0;
+  metrics.start_time.tv_nsec = 0;
+
   Vector ledger;
   vector_init(&ledger, sizeof(FailureEntry));
 
@@ -117,6 +123,9 @@ CTEST(SUITE_NAME, test_json_write_all_failure_types) {
                         "JSON contains crash count");
     ASSERT_PTR_NOT_NULL(strstr(buf, "\"timeouts\": 1"),
                         "JSON contains timeout count");
+    ASSERT_PTR_NOT_NULL(
+        strstr(buf, "\"duration_ms\": 2212.34"),
+        "JSON contains session duration in milliseconds to 2 decimal places");
 
     // test case failure object checks
     ASSERT_PTR_NOT_NULL(strstr(buf, "\"type\": \"test_case\""),

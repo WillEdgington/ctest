@@ -324,15 +324,22 @@ CTEST(SUITE_NAME, test_report_summary_all_passed_normal) {
                             .total_crashes = 0,
                             .total_timeouts = 0};
 
+  // duration: 5.891s
+  session.end_time.tv_sec = 5;
+  session.end_time.tv_nsec = 891000000;
+  session.start_time.tv_sec = 0;
+  session.start_time.tv_nsec = 0;
+
   char out_buf[CAPTURE_BUF_SIZE];
   ctest_capture_stdout_start();
   ctest_report_summary(&session, CTEST_VERBOSITY_NORMAL);
   ctest_capture_stdout_end(out_buf, sizeof(out_buf));
 
-  ASSERT_PTR_NOT_NULL(strstr(out_buf, CTEST_COLOR_GREEN "ALL " CTEST_COLOR_RESET
-                                                        "3" CTEST_COLOR_GREEN
-                                                        " SUITES PASSED"),
-                      "Passing summary should indicate all suites passed");
+  ASSERT_PTR_NOT_NULL(strstr(out_buf, CTEST_COLOR_GREEN
+                             "ALL " CTEST_COLOR_RESET "3" CTEST_COLOR_GREEN
+                             " SUITES PASSED" CTEST_COLOR_RESET " (5.89s)"),
+                      "Passing summary should indicate all suites passed and "
+                      "display duration is seconds to 2 decimal places");
   ASSERT_PTR_NOT_NULL(
       strstr(out_buf, "\n======"),
       "CTEST_VERBOSITY_NORMAL mode summary should include horizontal margins");
@@ -345,13 +352,21 @@ CTEST(SUITE_NAME, test_report_summary_with_failures_normal) {
                             .total_crashes = 1,
                             .total_timeouts = 2};
 
+  // duration: 42.11034s
+  session.end_time.tv_sec = 42;
+  session.end_time.tv_nsec = 110340000;
+  session.start_time.tv_sec = 0;
+  session.start_time.tv_nsec = 0;
+
   char out_buf[CAPTURE_BUF_SIZE];
   ctest_capture_stdout_start();
   ctest_report_summary(&session, CTEST_VERBOSITY_NORMAL);
   ctest_capture_stdout_end(out_buf, sizeof(out_buf));
 
-  ASSERT_PTR_NOT_NULL(strstr(out_buf, "SUITES: 5"),
-                      "Summary should display total suites count");
+  ASSERT_PTR_NOT_NULL(
+      strstr(out_buf, "SUITES: 5 (42.11s)"),
+      "Summary should display total suites count with session duration in "
+      "seconds to 2 decimal places in brackets next to suite count");
   ASSERT_PTR_NOT_NULL(strstr(out_buf, "TESTS: 20"),
                       "Summary should display total run count");
   ASSERT_PTR_NOT_NULL(strstr(out_buf, "PASSED: " CTEST_COLOR_GREEN "17"),
@@ -374,15 +389,23 @@ CTEST(SUITE_NAME, test_report_summary_quiet_all_passed) {
                             .total_crashes = 0,
                             .total_timeouts = 0};
 
+  // duration: 11.62s
+  session.end_time.tv_sec = 11;
+  session.end_time.tv_nsec = 620000000;
+  session.start_time.tv_sec = 0;
+  session.start_time.tv_nsec = 0;
+
   char out_buf[CAPTURE_BUF_SIZE];
   ctest_capture_stdout_start();
   ctest_report_summary(&session, CTEST_VERBOSITY_QUIET);
   ctest_capture_stdout_end(out_buf, sizeof(out_buf));
 
   ASSERT_PTR_NOT_NULL(
-      strstr(out_buf, CTEST_COLOR_GREEN "ALL " CTEST_COLOR_RESET
-                                        "3" CTEST_COLOR_GREEN " SUITES PASSED"),
-      "Quiet passing summary should indicate all suites passed");
+      strstr(out_buf,
+             CTEST_COLOR_GREEN "ALL " CTEST_COLOR_RESET "3" CTEST_COLOR_GREEN
+                               " SUITES PASSED" CTEST_COLOR_RESET " (11.62s)"),
+      "Quiet passing summary should indicate all suites passed and display the "
+      "duration in seconds to 2 decimal places");
   ASSERT_PTR_NULL(strstr(out_buf, "\n====="),
                   "Quiet summary should omit horizontal margin characters");
 }
@@ -394,13 +417,20 @@ CTEST(SUITE_NAME, test_report_summary_quiet_with_failures) {
                             .total_crashes = 2,
                             .total_timeouts = 1};
 
+  // duration: 0.09s
+  session.end_time.tv_sec = 0;
+  session.end_time.tv_nsec = 90000000;
+  session.start_time.tv_sec = 0;
+  session.start_time.tv_nsec = 0;
+
   char out_buf[CAPTURE_BUF_SIZE];
   ctest_capture_stdout_start();
   ctest_report_summary(&session, CTEST_VERBOSITY_QUIET);
   ctest_capture_stdout_end(out_buf, sizeof(out_buf));
 
-  ASSERT_PTR_NOT_NULL(strstr(out_buf, "SUITES: 4"),
-                      "Quiet summary should display total suites count");
+  ASSERT_PTR_NOT_NULL(strstr(out_buf, "SUITES: 4 (0.09s)"),
+                      "Quiet summary should display total suites count and "
+                      "duration in seconds to 2 decimal places");
   ASSERT_PTR_NOT_NULL(strstr(out_buf, "TESTS: 17"),
                       "Quiet summary should display total run count");
   ASSERT_PTR_NOT_NULL(strstr(out_buf, "PASSED: " CTEST_COLOR_GREEN "15"),

@@ -1,0 +1,2 @@
+jobs = 8 # optimal for my machine
+timeout = 4 # 4 seconds timeout per-suite

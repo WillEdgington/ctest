@@ -4,9 +4,13 @@
 #include <stdlib.h>
 #include <string.h>
 
+#define CTEST_CONFIG_FILE_PATH ".ctestconfig"
+
 int main(int argc, char *argv[]) {
   CTestConfig config;
   ctest_config_init(&config);
+
+  ctest_config_load_file(&config, CTEST_CONFIG_FILE_PATH);
 
   int status = ctest_config_parse(argc, argv, &config);
   if (status != 0)

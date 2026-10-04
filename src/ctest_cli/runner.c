@@ -61,7 +61,7 @@ int ctest_run_session(const CTestConfig *config) {
   ctest_report_ledger(&ledger, config->verbosity);
   ctest_report_summary(&session, config->verbosity);
 
-  if (config->json_output_path != NULL) {
+  if (config->json_output_path[0] != '\0') {
     if (ctest_json_write(config->json_output_path, &session, &ledger) != 0) {
       fprintf(stderr, "ctest: could no write JSON report to %s\n",
               config->json_output_path);

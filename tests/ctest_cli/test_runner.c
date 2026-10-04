@@ -60,7 +60,7 @@ CTEST(SUITE_NAME, test_runner_all_passed) {
 
   CTestConfig config;
   ctest_config_init(&config);
-  config.target_dir = test_dir;
+  snprintf(config.target_dir, sizeof(config.target_dir), "%s", test_dir);
 
   char out_buf[CAPTURE_BUF_SIZE];
   ctest_capture_stdout_start();
@@ -85,7 +85,7 @@ CTEST(SUITE_NAME, test_runner_with_failures) {
 
   CTestConfig config;
   ctest_config_init(&config);
-  config.target_dir = test_dir;
+  snprintf(config.target_dir, sizeof(config.target_dir), "%s", test_dir);
 
   char out_buf[CAPTURE_BUF_SIZE];
   ctest_capture_stdout_start();
@@ -112,7 +112,7 @@ CTEST(SUITE_NAME, test_runner_with_crash) {
 
   CTestConfig config;
   ctest_config_init(&config);
-  config.target_dir = test_dir;
+  snprintf(config.target_dir, sizeof(config.target_dir), "%s", test_dir);
 
   char out_buf[CAPTURE_BUF_SIZE];
   ctest_capture_stdout_start();
@@ -130,7 +130,8 @@ CTEST(SUITE_NAME, test_runner_with_crash) {
 CTEST(SUITE_NAME, test_runner_invalid_directory) {
   CTestConfig config;
   ctest_config_init(&config);
-  config.target_dir = "non_existent_directory_92817344";
+  snprintf(config.target_dir, sizeof(config.target_dir),
+           "non_existent_directory_92817344");
 
   int saved_stderr = ctest_mute_output(STDERR_FILENO);
   int res = ctest_run_session(&config);
@@ -153,8 +154,8 @@ CTEST(SUITE_NAME, test_runner_with_filter) {
 
   CTestConfig config;
   ctest_config_init(&config);
-  config.target_dir = test_dir;
-  config.filter_pattern = "apple";
+  snprintf(config.target_dir, sizeof(config.target_dir), "%s", test_dir);
+  snprintf(config.filter_pattern, sizeof(config.filter_pattern), "apple");
 
   char out_buf[CAPTURE_BUF_SIZE];
   ctest_capture_stdout_start();
@@ -184,7 +185,7 @@ CTEST(SUITE_NAME, test_runner_verbose_session) {
 
   CTestConfig config;
   ctest_config_init(&config);
-  config.target_dir = test_dir;
+  snprintf(config.target_dir, sizeof(config.target_dir), "%s", test_dir);
   config.verbosity = CTEST_VERBOSITY_VERBOSE;
 
   char out_buf[CAPTURE_BUF_SIZE];
@@ -211,8 +212,9 @@ CTEST(SUITE_NAME, test_runner_json_export) {
 
   CTestConfig config;
   ctest_config_init(&config);
-  config.target_dir = test_dir;
-  config.json_output_path = json_path;
+  snprintf(config.target_dir, sizeof(config.target_dir), "%s", test_dir);
+  snprintf(config.json_output_path, sizeof(config.json_output_path), "%s",
+           json_path);
 
   char out_buf[CAPTURE_BUF_SIZE];
   ctest_capture_stdout_start();
@@ -245,7 +247,7 @@ CTEST(SUITE_NAME, test_runner_concurrent_jobs) {
 
   CTestConfig config;
   ctest_config_init(&config);
-  config.target_dir = test_dir;
+  snprintf(config.target_dir, sizeof(config.target_dir), "%s", test_dir);
   config.jobs = 4;
 
   char out_buf[CAPTURE_BUF_SIZE];

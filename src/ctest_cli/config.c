@@ -41,7 +41,23 @@ static void assign_filter_pattern(CTestConfig *config, const char *val) {
   snprintf(config->filter_pattern, sizeof(config->filter_pattern), "%s", val);
 }
 
+static bool has_json_suffix(const char *path) {
+  if (!path) {
+    return false;
+  }
+
+  size_t len = strlen(path);
+  return (len >= 5 && strcmp(path + len - 5, ".json") == 0);
+}
+
 static void assign_json_output_path(CTestConfig *config, const char *val) {
+  if (!has_json_suffix(val)) {
+    fprintf(stderr,
+            "ctest: warning: JSON output path '%s' must end with '.json'; "
+            "option ignored\n",
+            val);
+    return;
+  }
   snprintf(config->json_output_path, sizeof(config->json_output_path), "%s",
            val);
 }

@@ -150,6 +150,22 @@ CTEST(SUITE_NAME, test_config_parse_missing_option_arg) {
                 "Parsed flag with missing value should error (return -1)");
 }
 
+CTEST(SUITE_NAME, test_config_parse_invalid_json) {
+  CTestConfig config;
+  ctest_config_init(&config);
+
+  char *argv[] = {"ctest", "--json", "\"invalid.txt\"", NULL};
+  int argc = 3;
+
+  int saved_stderr = ctest_mute_output(STDERR_FILENO);
+  ctest_config_parse(argc, argv, &config);
+  ctest_unmute_output(saved_stderr, STDERR_FILENO);
+
+  ASSERT(config.json_output_path[0] == '\0',
+         "CTestConfig.json_output_path should not be assigned if file argument "
+         "was had an invalid suffix (not \".json\")");
+}
+
 // -- ctest_config_load_file() tests --
 
 CTEST(SUITE_NAME, test_config_load_file_missing_file) {
@@ -361,4 +377,22 @@ CTEST(SUITE_NAME, test_config_load_file_duplicate_keys) {
       "Later key assignment in same file should override earlier value");
   ASSERT_INT_EQ(config.verbosity, CTEST_VERBOSITY_VERBOSE,
                 "Later verbosity assignment should override earlier value");
+}
+
+CTEST(SUITE_NAME, test_config_load_file_invalid_json) {
+  char *config_file = "./.ctestconfig_90538900";
+  char *config_content = "json = invalid.suffix";
+
+  ctest_setup_mock_file(config_file, config_content);
+
+  int saved_stderr = ctest_mute_output(STDERR_FILENO);
+  CTestConfig config = {0};
+  snprintf(config.json_output_path, sizeof(config.json_output_path),
+           "tests.json");
+  ctest_config_load_file(&config, config_file);
+  ctest_unmute_output(saved_stderr, STDERR_FILENO);
+
+  ASSERT_STR_EQ(config.json_output_path, "tests.json",
+                "CTestConfig.json_output_path should not change if json path "
+                "in config file has invalid suffix");
 }

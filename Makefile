@@ -61,7 +61,7 @@ test: CFLAGS += $(DEVFLAGS)
 test: LDFLAGS += $(DEVFLAGS)
 test: $(BIN) $(TEST_BIN)
 		@echo "Executing framework test suite..."
-		./$(BIN) tests/
+		./$(BIN)
 
 # List of cli helpers, exclude the ctest_cli main entry point
 CLI_HELPERS := $(filter-out src/ctest_cli/ctest_cli.o, $(CLI_OBJ))

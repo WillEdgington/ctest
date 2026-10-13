@@ -203,6 +203,24 @@ CTEST(SUITE_NAME, test_report_suite_metrics_quiet) {
   ctest_suite_metrics_cleanup(&metrics);
 }
 
+CTEST(SUITE_NAME,
+      test_report_suite_metrics_normal_all_passing_empty_results_vector) {
+  const char *bin_path = "test_a";
+  SuiteMetrics metrics = {0};
+  metrics.total_runs = 4;
+
+  char out_buf[CAPTURE_BUF_SIZE];
+  ctest_capture_stdout_start();
+  ctest_report_suite_metrics(bin_path, &metrics, CTEST_VERBOSITY_NORMAL);
+  ctest_capture_stdout_end(out_buf, sizeof(out_buf));
+
+  ASSERT_STR_EQ(out_buf,
+                CTEST_COLOR_GREEN "[PASS]  " CTEST_COLOR_RESET
+                                  "test_a: " CTEST_COLOR_GREEN
+                                  "...." CTEST_COLOR_RESET "\n",
+                "");
+}
+
 // -- ctest_report_ledger() tests --
 
 CTEST(SUITE_NAME, test_report_ledger_normal) {

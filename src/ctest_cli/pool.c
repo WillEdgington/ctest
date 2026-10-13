@@ -1,5 +1,6 @@
 #define _GNU_SOURCE
 #include "pool.h"
+#include "cache.h"
 #include "config.h"
 #include "executor.h"
 #include "filter.h"
@@ -13,6 +14,7 @@
 #include <stdio.h>
 #include <stdlib.h>
 #include <string.h>
+#include <sys/stat.h>
 #include <sys/wait.h>
 #include <time.h>
 #include <unistd.h>
@@ -154,6 +156,13 @@ static void process_workers(WorkerSlot *workers, SuiteMetrics *slot_metrics,
       ctest_report_suite_metrics(workers[i].bin_path, &slot_metrics[i],
                                  config->verbosity);
       ctest_update_session(session, &slot_metrics[i]);
+
+      // update the results cache
+      struct stat st;
+      if (stat(workers[i].bin_path, &st) == 0) {
+        ctest_cache_update(workers[i].bin_path, (unsigned long)st.st_mtime,
+                           &slot_metrics[i]);
+      }
 
       // zero the worker
       memset(&workers[i], 0, sizeof(WorkerSlot));

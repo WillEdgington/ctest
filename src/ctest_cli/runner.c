@@ -1,4 +1,5 @@
 #include "runner.h"
+#include "cache.h"
 #include "config.h"
 #include "discovery.h"
 #include "executor.h"
@@ -49,11 +50,21 @@ int ctest_run_session(const CTestConfig *config) {
     return -1;
   }
 
+  // load cache from file (.ctest_cache)
+  ctest_cache_load(CTEST_CACHE_PATH);
+
+  // check if any suites can be bypassed (stored in cache, all green, no changes
+  // since last run)
+  ctest_cache_check_and_bypass(test_bins, &session, config->verbosity);
+
   if (ctest_pool_run(test_bins, config, &session, &ledger) != 0) {
     ledger_free(&ledger);
     test_binaries_free(test_bins);
     return -1;
   }
+
+  // save cache to file and free cache data structure
+  ctest_cache_save_and_free(CTEST_CACHE_PATH);
 
   test_binaries_free(test_bins);
   ctest_session_end(&session);

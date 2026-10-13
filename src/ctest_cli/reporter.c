@@ -91,6 +91,11 @@ static void print_test_outcomes(const SuiteMetrics *metrics) {
 
       printf("%s", cur_status == TEST_PASS ? "." : "F");
     }
+  } else if (metrics->total_runs > 0 && metrics->total_failures == 0) {
+    printf(CTEST_COLOR_GREEN);
+    for (size_t i = 0; i < metrics->total_runs; i++) {
+      printf(".");
+    }
   }
 
   switch (metrics->state) {

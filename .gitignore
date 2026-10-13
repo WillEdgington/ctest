@@ -15,3 +15,6 @@ deps/
 tests/**/test_*
 !tests/**/*.c
 !tests/**/*.h
+
+# Test result caching (ctest)
+.ctest_cache

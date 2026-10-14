@@ -50,12 +50,14 @@ int ctest_run_session(const CTestConfig *config) {
     return -1;
   }
 
-  // load cache from file (.ctest_cache)
-  ctest_cache_load(CTEST_CACHE_PATH);
+  if (config->cache) {
+    // load cache from file (.ctest_cache)
+    ctest_cache_load(CTEST_CACHE_PATH);
 
-  // check if any suites can be bypassed (stored in cache, all green, no changes
-  // since last run)
-  ctest_cache_check_and_bypass(test_bins, &session, config->verbosity);
+    // check if any suites can be bypassed (stored in cache, all green, no
+    // changes since last run)
+    ctest_cache_check_and_bypass(test_bins, &session, config->verbosity);
+  }
 
   if (ctest_pool_run(test_bins, config, &session, &ledger) != 0) {
     ledger_free(&ledger);

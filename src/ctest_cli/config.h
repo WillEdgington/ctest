@@ -1,6 +1,7 @@
 #ifndef CTEST_CONFIG_H
 #define CTEST_CONFIG_H
 
+#include <stdbool.h>
 #include <stdio.h>
 #include <stdlib.h>
 
@@ -20,6 +21,7 @@ typedef struct {
   CTestVerbosity verbosity;
   unsigned int timeout_sec;
   unsigned int jobs;
+  bool cache;
 } CTestConfig;
 
 void ctest_config_init(CTestConfig *config);

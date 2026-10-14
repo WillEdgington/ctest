@@ -9,6 +9,7 @@
 static struct option long_options[] = {{"help", no_argument, 0, 'h'},
                                        {"verbose", no_argument, 0, 'v'},
                                        {"quiet", no_argument, 0, 'q'},
+                                       {"no-cache", no_argument, 0, 1001},
                                        {"filter", required_argument, 0, 'f'},
                                        {"timeout", required_argument, 0, 't'},
                                        {"jobs", required_argument, 0, 'j'},
@@ -75,6 +76,16 @@ static void assign_verbosity(CTestConfig *config, const char *val) {
   }
 }
 
+static void assign_cache_toggle(CTestConfig *config, const char *val) {
+  if (strcmp(val, "true") == 0 || strcmp(val, "TRUE") == 0 ||
+      strcmp(val, "True") == 0 || strcmp(val, "1") == 0) {
+    config->cache = true;
+  } else if (strcmp(val, "false") == 0 || strcmp(val, "FALSE") == 0 ||
+             strcmp(val, "False") == 0 || strcmp(val, "0") == 0) {
+    config->cache = false;
+  }
+}
+
 void ctest_config_init(CTestConfig *config) {
   if (config == NULL)
     return;
@@ -83,6 +94,7 @@ void ctest_config_init(CTestConfig *config) {
   config->verbosity = CTEST_VERBOSITY_NORMAL;
   config->filter_pattern[0] = '\0';
   config->json_output_path[0] = '\0';
+  config->cache = true;
 
   snprintf(config->target_dir, sizeof(config->target_dir), DEFAULT_TARGET_DIR);
 }
@@ -118,6 +130,9 @@ int ctest_config_parse(int argc, char *argv[], CTestConfig *config) {
       break;
     case 1000:
       assign_json_output_path(config, optarg);
+      break;
+    case 1001:
+      config->cache = false; // no-cache toggled
       break;
     case '?':
     default:
@@ -214,6 +229,8 @@ static void process_kv_pair(CTestConfig *config, const char *key,
     assign_filter_pattern(config, val);
   } else if (strcmp(key, "json") == 0) {
     assign_json_output_path(config, val);
+  } else if (strcmp(key, "use_cache") == 0) {
+    assign_cache_toggle(config, val);
   }
 }
 

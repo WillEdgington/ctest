@@ -158,10 +158,12 @@ static void process_workers(WorkerSlot *workers, SuiteMetrics *slot_metrics,
       ctest_update_session(session, &slot_metrics[i]);
 
       // update the results cache
-      struct stat st;
-      if (stat(workers[i].bin_path, &st) == 0) {
-        ctest_cache_update(workers[i].bin_path, (unsigned long)st.st_mtime,
-                           &slot_metrics[i]);
+      if (config->cache) {
+        struct stat st;
+        if (stat(workers[i].bin_path, &st) == 0) {
+          ctest_cache_update(workers[i].bin_path, (unsigned long)st.st_mtime,
+                             &slot_metrics[i]);
+        }
       }
 
       // zero the worker

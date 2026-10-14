@@ -1,5 +1,6 @@
 #include "ctest_cli/config.h"
 #include <ctest/ctest.h>
+#include <stdbool.h>
 
 #define SUITE_NAME test_config
 
@@ -55,13 +56,16 @@ CTEST(SUITE_NAME, test_config_parse_valid_flags) {
   CTestConfig config;
   ctest_config_init(&config);
 
-  char *argv[] = {"ctest", "-v", "-f",     "suite_name",  "-t",         "30",
-                  "-j",    "4",  "--json", "report.json", "tests/unit", NULL};
-  int argc = 10;
+  char *argv[] = {"ctest",       "--no-cache", "-v", "-f", "suite_name",
+                  "-t",          "30",         "-j", "4",  "--json",
+                  "report.json", "tests/unit", NULL};
+  int argc = 11;
 
   ASSERT_INT_EQ(
       ctest_config_parse(argc, argv, &config), 0,
       "Command populated by multiple valid flags should parse error free");
+  ASSERT(config.cache == false,
+         "Parsed '--no-cache' flag should set cache to false");
   ASSERT_INT_EQ(config.verbosity, CTEST_VERBOSITY_VERBOSE,
                 "Parsed verbose flag ('-v') should set verbosity level to "
                 "verbose (CTEST_VERBOSITY_VERBOSE)");
@@ -205,7 +209,8 @@ CTEST(SUITE_NAME, test_config_load_file_all_keys_valid) {
                          "target_dir = ./custom_tests\n"
                          "verbosity = verbose\n"
                          "filter = *est_co*\n"
-                         "json = report.json";
+                         "json = report.json\n"
+                         "use_cache = true";
 
   ctest_setup_mock_file(config_file, config_content);
 
@@ -231,6 +236,8 @@ CTEST(SUITE_NAME, test_config_load_file_all_keys_valid) {
   ASSERT_STR_EQ(config.json_output_path, "report.json",
                 "Parsed \"json\" key should assign parsed value to "
                 "CTestConfig.json_output_path");
+  ASSERT(config.cache == true, "Parsed \"use_cache\" key should assign parsed "
+                               "value to CTestConfig.cache (true/false)");
 }
 
 CTEST(SUITE_NAME, test_config_load_file_partial_keys) {

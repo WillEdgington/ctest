@@ -171,6 +171,7 @@ void ctest_config_print_usage(const char *exec_name, FILE *stream) {
       "  -v, --verbose           Print detailed execution output per suite\n");
   fprintf(stream, "  -q, --quiet             Suppress per-suite progress; show "
                   "summary only\n");
+  fprintf(stream, "      --no-cache          Toggle caching engine off\n");
   fprintf(
       stream,
       "  -f, --filter <pattern>  Run only test suites matching <pattern>\n");

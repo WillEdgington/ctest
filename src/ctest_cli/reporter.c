@@ -164,7 +164,12 @@ static void print_test_case(const char *file_path,
 
 static void report_suite_metrics_verbose(const char *binary_path,
                                          const SuiteMetrics *metrics) {
-  printf("\n[RUN] %s\n", binary_path);
+  if (metrics->test_results.count == 0 && metrics->total_failures == 0 &&
+      metrics->total_runs > 0) {
+    printf("\n[CACHED] %s\n", binary_path);
+  } else {
+    printf("\n[RUN] %s\n", binary_path);
+  }
 
   const char *file_path = metrics->file_path;
   Iter it = vector_iter((Vector *)&metrics->test_results);

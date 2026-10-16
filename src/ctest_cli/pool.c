@@ -3,7 +3,6 @@
 #include "cache.h"
 #include "config.h"
 #include "executor.h"
-#include "filter.h"
 #include "reporter.h"
 #include "session.h"
 
@@ -70,17 +69,8 @@ static void launch_workers(WorkerSlot *workers, SuiteMetrics *slot_metrics,
     if (workers[i].is_active)
       continue;
 
-    const char *bin_path = NULL;
-    // iterate through test_bins until you find a valid path (given filter) or
-    // run out
-    while (*bin_i < test_bins->count) {
-      const char *path = (const char *)vector_get(test_bins, *bin_i);
-      (*bin_i)++;
-      if (ctest_filter_matches(path, config->filter_pattern)) {
-        bin_path = path;
-        break;
-      }
-    }
+    const char *bin_path = (const char *)vector_get(test_bins, *bin_i);
+    (*bin_i)++;
 
     // if found valid path
     if (bin_path != NULL) {

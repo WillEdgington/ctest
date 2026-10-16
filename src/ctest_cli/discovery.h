@@ -5,6 +5,6 @@
 
 #define DISCOVERY_MAX_PATH_LEN 256
 
-Vector *ctest_discover_tests(const char *root_dir);
+Vector *ctest_discover_tests(const char *root_dir, const char *filter_pattern);
 
 #endif

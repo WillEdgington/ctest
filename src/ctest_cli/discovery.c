@@ -1,4 +1,5 @@
 #include "discovery.h"
+#include "filter.h"
 #include <clib/vector.h>
 #include <dirent.h>
 #include <stdio.h>
@@ -7,7 +8,8 @@
 #include <sys/stat.h>
 #include <sys/types.h>
 
-static int traverse_directory(const char *dir, Vector *v) {
+static int traverse_directory(const char *dir, Vector *v,
+                              const char *filter_pattern) {
   DIR *dir_stream = opendir(dir);
   if (dir_stream == NULL)
     return -1;
@@ -30,13 +32,14 @@ static int traverse_directory(const char *dir, Vector *v) {
       continue;
 
     if (S_ISREG(statbuf.st_mode)) {
-      if ((statbuf.st_mode & S_IXUSR) && strncmp(e_name, "test_", 5) == 0)
+      if ((statbuf.st_mode & S_IXUSR) && strncmp(e_name, "test_", 5) == 0 &&
+          ctest_filter_matches(p_buf, filter_pattern))
         if (vector_push(v, p_buf) == -1) {
           closedir(dir_stream);
           return -1;
         }
     } else if (S_ISDIR(statbuf.st_mode)) {
-      if (traverse_directory(p_buf, v) == -1) {
+      if (traverse_directory(p_buf, v, filter_pattern) == -1) {
         closedir(dir_stream);
         return -1;
       }
@@ -46,14 +49,14 @@ static int traverse_directory(const char *dir, Vector *v) {
   return closedir(dir_stream);
 }
 
-Vector *ctest_discover_tests(const char *root_dir) {
+Vector *ctest_discover_tests(const char *root_dir, const char *filter_pattern) {
   Vector *v = malloc(sizeof(Vector));
   if (vector_init(v, DISCOVERY_MAX_PATH_LEN) != 0) {
     free(v);
     return NULL;
   }
 
-  if (traverse_directory(root_dir, v) != 0) {
+  if (traverse_directory(root_dir, v, filter_pattern) != 0) {
     vector_free(v);
     free(v);
     return NULL;

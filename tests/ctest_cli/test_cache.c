@@ -269,7 +269,7 @@ CTEST(SUITE_NAME, test_cache_check_and_bypass) {
                      &(SuiteMetrics){.total_runs = 10, .state = SUITE_DEFAULT});
   ctest_cache_update(mock_test_b, 0,
                      &(SuiteMetrics){.total_runs = 15, .state = SUITE_DEFAULT});
-  Vector *test_bins = ctest_discover_tests(mock_tests_dir);
+  Vector *test_bins = ctest_discover_tests(mock_tests_dir, NULL);
 
   SessionMetrics session = {0};
 

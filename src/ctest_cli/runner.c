@@ -42,7 +42,8 @@ int ctest_run_session(const CTestConfig *config) {
 
   ctest_report_start_banner(config->target_dir, config->verbosity);
 
-  Vector *test_bins = ctest_discover_tests(config->target_dir);
+  Vector *test_bins =
+      ctest_discover_tests(config->target_dir, config->filter_pattern);
   if (test_bins == NULL) {
     fprintf(stderr, "ctest: failed to discover test binaries at %s\n",
             config->target_dir);

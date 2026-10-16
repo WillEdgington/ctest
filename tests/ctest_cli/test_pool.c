@@ -83,7 +83,7 @@ CTEST(SUITE_NAME, test_pool_all_passing_parallel) {
   ctest_setup_mock_binary(mock_pass_3_bin, mock_pass_3_c_code);
   ctest_setup_mock_binary(mock_pass_1_bin_2, mock_pass_1_c_code);
 
-  Vector *suites = ctest_discover_tests((const char *)MOCK_POOL_DIR);
+  Vector *suites = ctest_discover_tests((const char *)MOCK_POOL_DIR, NULL);
 
   Vector ledger;
   vector_init(&ledger, CTEST_MAX_FAIL_LINE_LEN);
@@ -119,7 +119,7 @@ CTEST(SUITE_NAME, test_pool_mixed_outcomes_parallel) {
   ctest_setup_mock_binary(mock_pass_1_fail_2_bin, mock_pass_1_fail_2_c_code);
   ctest_setup_mock_binary(mock_crashing_bin, mock_crashing_c_code);
 
-  Vector *suites = ctest_discover_tests((const char *)MOCK_POOL_DIR);
+  Vector *suites = ctest_discover_tests((const char *)MOCK_POOL_DIR, NULL);
 
   Vector ledger;
   vector_init(&ledger, CTEST_MAX_FAIL_LINE_LEN);
@@ -183,7 +183,7 @@ CTEST(SUITE_NAME, test_pool_single_worker) {
   ctest_setup_mock_binary(mock_pass_3_bin, mock_pass_3_c_code);
   ctest_setup_mock_binary(mock_pass_1_bin, mock_pass_1_c_code);
 
-  Vector *suites = ctest_discover_tests((const char *)MOCK_POOL_DIR);
+  Vector *suites = ctest_discover_tests((const char *)MOCK_POOL_DIR, NULL);
 
   Vector ledger;
   vector_init(&ledger, CTEST_MAX_FAIL_LINE_LEN);

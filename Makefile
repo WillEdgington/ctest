@@ -81,7 +81,7 @@ tests/ctest_cli/%: tests/ctest_cli/%.c $(LIB_OBJ) $(CLI_HELPERS) $(DEP_LIBS)
 -include $(DEPS)
 
 clean:
-		rm -f $(ALL_OBJ) $(TEST_BIN) $(DEPS) $(BIN) $(LIB_A)
+		rm -f $(ALL_OBJ) $(TEST_BIN) $(DEPS) $(BIN) $(LIB_A) .ctest_cache
 
 clean_deps: clean
 		@for dir in $(DEP_DIRS); do $(MAKE) -C $$dir clean; done

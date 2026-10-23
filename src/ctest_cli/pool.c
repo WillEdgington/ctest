@@ -63,7 +63,7 @@ static void restore_signals(const struct sigaction *old_int,
 
 static void launch_workers(WorkerSlot *workers, SuiteMetrics *slot_metrics,
                            size_t jobs, const Vector *test_bins, size_t *bin_i,
-                           const CTestConfig *config, size_t *active_count) {
+                           size_t *active_count) {
   for (size_t i = 0; i < jobs && *bin_i < test_bins->count && !g_interrupted;
        i++) {
     if (workers[i].is_active)
@@ -205,7 +205,7 @@ int ctest_pool_run(const Vector *test_bins, const CTestConfig *config,
   size_t active_count = 0;
 
   while ((bin_i < test_bins->count || active_count > 0) && !g_interrupted) {
-    launch_workers(workers, slot_metrics, jobs, test_bins, &bin_i, config,
+    launch_workers(workers, slot_metrics, jobs, test_bins, &bin_i,
                    &active_count);
 
     if (active_count == 0)

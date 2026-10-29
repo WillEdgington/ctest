@@ -166,10 +166,12 @@ static void report_suite_metrics_verbose(const char *binary_path,
                                          const SuiteMetrics *metrics) {
   if (metrics->test_results.count == 0 && metrics->total_failures == 0 &&
       metrics->total_runs > 0) {
-    printf("\n[CACHED] %s\n", binary_path);
+    printf("\n[CACHED] %s: ", binary_path);
   } else {
-    printf("\n[RUN] %s\n", binary_path);
+    printf("\n[RUN] %s: ", binary_path);
   }
+  print_test_outcomes(metrics);
+  printf("\n");
 
   const char *file_path = metrics->file_path;
   Iter it = vector_iter((Vector *)&metrics->test_results);

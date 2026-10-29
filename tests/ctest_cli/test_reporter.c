@@ -174,7 +174,9 @@ CTEST(SUITE_NAME, test_report_suite_metrics_verbose) {
   ctest_report_suite_metrics(bin_path, &metrics, CTEST_VERBOSITY_VERBOSE);
   ctest_capture_stdout_end(out_buf, sizeof(out_buf));
 
-  ASSERT_PTR_NOT_NULL(strstr(out_buf, "\n[RUN] tests/fake_test\n"),
+  ASSERT_PTR_NOT_NULL(strstr(out_buf,
+                             "\n[RUN] tests/fake_test: " CTEST_COLOR_GREEN
+                             "." CTEST_COLOR_RED "F" CTEST_COLOR_RESET "\n"),
                       "Verbose output should include [RUN] header");
   ASSERT_PTR_NOT_NULL(strstr(out_buf, "Line 15 in tests/test_demo.c"),
                       "Verbose output should contain line number and file");
@@ -232,7 +234,8 @@ CTEST(SUITE_NAME, test_report_suite_metrics_verbose_cached) {
   ctest_capture_stdout_end(out_buf, sizeof(out_buf));
 
   ASSERT_STR_EQ(out_buf,
-                "\n[CACHED] tests/test_cached\n" CTEST_COLOR_GREEN
+                "\n[CACHED] tests/test_cached: " CTEST_COLOR_GREEN
+                "......" CTEST_COLOR_RESET "\n" CTEST_COLOR_GREEN
                 "[PASS]  " CTEST_COLOR_RESET "\n",
                 "Passing suite with empty test_case vector (cached) should "
                 "report '[CACHED]' in verbose level");

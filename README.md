@@ -13,7 +13,7 @@ CTEST(SUITE_NAME, test_one_equals_two) {
   ASSERT_INT_EQ(1, 2, "One should equal two");
 }
 
-CTEST(SUITE_NAME, test_one_equals_one) {
+CTEST(SUITE_NAME, test_greeting_is_hello) {
   const char *greeting = "hello";
   ASSERT_STR_EQ(greeting, "hello", "greeting variable should equal \"hello\"");
 }

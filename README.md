@@ -74,7 +74,7 @@ Requires `gcc` and `make`. Once the repository is cloned from the remote, you ca
 **runtime builds:**
 ```sh
 make setup_deps # Clone the dependency repos
-make            # Compiles the executable cshell binary
+make            # Compiles the ctest binary and libctest.a static library
 ```
 
 **dev builds:**
@@ -86,7 +86,7 @@ make debug      # Builds with debug symbols and sanitisers
 **clean:**
 ```sh
 make clean_deps # Cleans compiled binaries, .o, .a, and .d files (including compiled dependencies)
-make clean      # Cleans compiled binaries, .o, and .d files (just for ctest)
+make clean      # Cleans compiled binaries, .o, .a, and .d files (just for ctest)
 ```
 
 ---
